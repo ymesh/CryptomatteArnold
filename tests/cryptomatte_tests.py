@@ -327,6 +327,7 @@ class Cryptomatte000(CryptomatteTestBase):
         exr: single
         manifest: embedded
         strip namespaces: on
+        preview_in_exr: off
         overrides:
             Some face assignments
             crypto_asset_override
@@ -361,6 +362,9 @@ class Cryptomatte000(CryptomatteTestBase):
             self.assertIn("cryptomatte uses Arnold 5.0.1.0", log_contents,
                           "Cryptomatte not built against Arnold 5.0.1.0 (for maximum compatibility). ")
 
+    def test_non_cryptomatte_pixels(self):
+        self.assertNonCryptomattePixelsMatch()
+
 
 class Cryptomatte001(CryptomatteTestBase):
     """
@@ -388,6 +392,7 @@ class Cryptomatte002(CryptomatteTestBase):
     """
     Stripped down version of 000, with:
         64px
+        preview_in_exr: off (with jpeg driver to simulate display driver)
         Multicamera renders with embedded manifests
     """
     ass = "cryptomatte/002_multicam.ass"
@@ -402,6 +407,9 @@ class Cryptomatte002(CryptomatteTestBase):
 
     def test_cryptomatte_pixels(self):
         self.assertCryptomattePixelsMatch()
+
+    def test_non_cryptomatte_pixels(self):
+        self.assertNonCryptomattePixelsMatch()
 
 
 class Cryptomatte003(CryptomatteTestBase):
@@ -468,6 +476,7 @@ class Cryptomatte020(CryptomatteTestBase):
         exr: single
         manifest: embedded
         strip namespaces: N/A
+
     Something has strings per polygon.
     """
     ass = "cryptomatte/020_custom_cryptomattes.ass"

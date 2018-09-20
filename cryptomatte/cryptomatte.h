@@ -1102,9 +1102,9 @@ private:
                     const char* user_aov_name = user_cryptomattes.aovs[j].c_str();
                     if (strcmp(aov_name, user_aov_name) == 0) {
                         // will be destroyed when cryptomatteData is
-                        cryptoAOVs = AiArrayAllocate(option_aov_depth, 1, AI_TYPE_STRING);
+                        user_cryptomattes.aov_arrays[j] = AiArrayAllocate(option_aov_depth, 1, AI_TYPE_STRING);
+                        cryptoAOVs = user_cryptomattes.aov_arrays[j];
                         tmp_uc_drivers_vv[j].push_back(driver);
-                        user_cryptomattes.aov_arrays[j] = cryptoAOVs;
                         break;
                     }
                 }
@@ -1113,14 +1113,15 @@ private:
             std::string orig_output_str = output_string;
 
             if (cryptoAOVs) {
-                const bool half = AiNodeGetBool(driver, "half_precision");
-                if (check_driver(driver) && half)
+                const bool half = AiNodeGetBool(driver, "half_precision"),
+                           usable_driver = check_driver(driver);
+                if (usable_driver && half) 
                     half_modified.insert(driver);
                 for (uint32_t j = 0; j < option_aov_depth; j++)
                     AiArraySetStr(cryptoAOVs, j, "");
                 create_AOV_array(aov_name, filter_name, camera_name, driver, cryptoAOVs,
                                  new_outputs);
-                if (!option_exr_preview_channels) {
+                if (usable_driver && !option_exr_preview_channels) {
                     orig_output_str = "";
                     if (camera_name)
                         orig_output_str += std::string(camera_name) + " ";

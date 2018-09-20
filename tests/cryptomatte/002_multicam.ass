@@ -8,10 +8,11 @@ options
 {
  AA_samples 6
  error_color_bad_pixel 0 0 0
- outputs 8 1 STRING
+ outputs 9 1 STRING
   "perspCam1 RGBA RGBA defaultArnoldFilter@gaussian_filter defaultArnoldDriver@driver_exr.camera1_bty"
   "perspCam1 crypto_material RGB defaultArnoldFilter@gaussian_filter defaultArnoldDriver@driver_exr.camera1_crypto_material"
   "perspCam1 crypto_asset RGB defaultArnoldFilter@gaussian_filter defaultArnoldDriver@driver_exr.camera1_crypto_asset HALF"
+  "perspCam1 crypto_asset RGB defaultArnoldFilter@gaussian_filter driver_jpeg.camera1_crypto_asset_preview"
   "perspCam1 special_chars RGB defaultArnoldFilter@gaussian_filter defaultArnoldDriver@driver_exr.camera1_special_chars HALF"
   "perspCam2 RGBA RGBA defaultArnoldFilter@gaussian_filter defaultArnoldDriver@driver_exr.camera2_bty"
   "perspCam2 crypto_material RGB defaultArnoldFilter@gaussian_filter defaultArnoldDriver@driver_exr.camera2_crypto_material"
@@ -41,6 +42,12 @@ driver_tiff
 {
  name defaultArnoldDriver@driver_exr.camera1_bty
  filename "002_result/camera1_bty.tif"
+}
+
+driver_jpeg
+{
+ name driver_jpeg.camera1_crypto_asset_preview
+ filename "002_result/camera1_crypto_asset_prev.jpg"
 }
 
 driver_exr
@@ -167,6 +174,7 @@ persp_camera
 cryptomatte
 {
  name cryptomatte1
+ preview_in_exr off
  user_crypto_aov_0 "special_chars"
  user_crypto_src_0 "special_chars_udata"
 }

@@ -38,9 +38,9 @@ options
 cryptomatte
 {
  name cryptomatte1
-
+ preview_in_exr off
  declare run_unit_tests constant BOOL
- run_unit_tests true
+ run_unit_tests on
 }
 
 cryptomatte
@@ -525,6 +525,7 @@ standard_surface
 utility
 {
  name leftAsset:aiStandardSurface1SG
+ color 0 0 0
 }
 
 standard_surface
