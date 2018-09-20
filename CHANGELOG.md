@@ -1,3 +1,7 @@
+### CryptomatteArnold 1.1 release notes: 
+
+* Preview AOVs are now always displayed in display drivers, even when preview_in_exr is disabled. 
+
 ### CryptomatteArnold 1.0 release notes: 
 
 * Renamed repo from AlShaders2 to CryptomatteArnold
