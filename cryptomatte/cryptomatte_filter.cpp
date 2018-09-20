@@ -1,5 +1,5 @@
-#include "filters.h"
 #include "cryptomatte.h"
+#include "filters.h"
 #include <ai.h>
 #include <algorithm>
 #include <cstring>
@@ -17,17 +17,12 @@ AI_FILTER_NODE_EXPORT_METHODS(cryptomatte_filter_mtd)
 
 static const AtString ats_opacity("opacity");
 
-enum cryptomatte_filterParams {
-    p_width,
-    p_rank,
-    p_filter,
-};
-
 struct CryptomatteFilterData {
-    float (*filter_func)(AtVector2, float);
-    float width;
-    int rank;
-    int filter;
+    float (*filter_func)(AtVector2, float) = nullptr;
+    float width = 2.0f;
+    int rank = -1;
+    int filter = 0;
+    bool noop = false;
 };
 
 node_parameters {
@@ -38,6 +33,7 @@ node_parameters {
     AiParameterFlt("width", 2.0);
     AiParameterInt("rank", -1);
     AiParameterEnum("filter", p_filter_gaussian, filterEnumNames);
+    AiParameterBool("noop", false);
 }
 
 void registerCryptomatteFilter(AtNodeLib* node) {
@@ -62,15 +58,17 @@ node_finish {
     AiNodeSetLocalData(node, nullptr);
 }
 
-void node_update_content(AtNode *node) {
-    const int rank = AiNodeGetInt(node, "rank");
-    if (rank < 0)
-        AiMsgError("Cryptomatte Filter: %s rank not set", AiNodeGetName(node));
-
+void node_update_content(AtNode* node) {
     CryptomatteFilterData* data = (CryptomatteFilterData*)AiNodeGetLocalData(node);
     data->width = AiNodeGetFlt(node, "width");
-    data->rank = rank;
+    data->rank = AiNodeGetInt(node, "rank");
     data->filter = AiNodeGetInt(node, "filter");
+    data->noop = AiNodeGetBool(node, "noop");
+
+    if (data->noop)
+        return;
+    else if (data->rank < 0)
+        AiMsgError("Cryptomatte Filter: %s rank not set", AiNodeGetName(node));
 
     switch (data->filter) {
     case p_filter_triangle:
@@ -108,7 +106,10 @@ node_update {
 }
 
 filter_output_type {
-    if (input_type == AI_TYPE_FLOAT)
+    CryptomatteFilterData* data = (CryptomatteFilterData*)AiNodeGetLocalData(node);
+    if (data->noop)
+        return input_type;
+    else if (input_type == AI_TYPE_FLOAT)
         return AI_TYPE_RGBA;
     else
         return AI_TYPE_NONE;
@@ -143,7 +144,10 @@ void write_to_samples_map(sw_map_t* vals, float hash, float sample_weight) {
 filter_pixel {
     AtRGBA* out_value = (AtRGBA*)data_out;
     *out_value = AI_RGBA_ZERO;
+
     CryptomatteFilterData* data = (CryptomatteFilterData*)AiNodeGetLocalData(node);
+    if (data->noop)
+        return;
 
     ///////////////////////////////////////////////
     //

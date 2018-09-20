@@ -258,7 +258,7 @@ namespace MaterialNameTests {
 inline void assert_material_name(const char* msg, const char* mat_full_name, bool strip_ns,
                                  const char* mat_correct) {
     char mat_name_out[MAX_STRING_LENGTH] = "";
-    
+
     CryptoNameFlag flags = CRYPTO_NAME_ALL;
     if (!strip_ns)
         flags = flags ^ CRYPTO_NAME_STRIP_NS;
@@ -342,9 +342,7 @@ inline void critical_section() {
         AiMsgError("Crit section was not initialized in plugin init.");
 }
 
-inline void run() {
-    critical_section();
-}
+inline void run() { critical_section(); }
 } // namespace SystemTests
 
 inline void run_all_unit_tests(AtNode* node) {

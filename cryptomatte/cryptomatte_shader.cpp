@@ -73,7 +73,8 @@ node_update {
     CryptomatteData* data = reinterpret_cast<CryptomatteData*>(AiNodeGetLocalData(node));
 
     data->set_option_sidecar_manifests(AiNodeGetBool(node, "sidecar_manifests"));
-    data->set_option_channels(AiNodeGetInt(node, "cryptomatte_depth"), AiNodeGetBool(node, "preview_in_exr"));
+    data->set_option_channels(AiNodeGetInt(node, "cryptomatte_depth"),
+                              AiNodeGetBool(node, "preview_in_exr"));
 
     CryptoNameFlag flags = CRYPTO_NAME_ALL;
     if (!AiNodeGetBool(node, "process_maya"))
