@@ -30,8 +30,6 @@ options
  GI_diffuse_depth 0
  GI_specular_depth 0
  GI_transmission_depth 0
- declare frame constant FLOAT
- frame 1
 }
 
 driver_exr
