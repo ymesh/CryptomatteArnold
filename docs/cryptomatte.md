@@ -1,5 +1,4 @@
 ## Cryptomatte
-
 Cryptomatte in Arnold 5 is an AOV shader. 
 
 Usage varies by DCC. In all DCCs however, it involves setting up a global AOV shader, though in Maya and Cinema 4D this is done automatically. AOV shaders are shaders which run on all samples after the main shading network has evaluated. When Cryptomatte is present, and a Cryptomatte AOV is active, it will handle the rest of the setup itself inside of Arnold. The setup includes creating more outputs, writing metadata and manifests, and installing the proper filters. The Cryptomatte Filter sidecar manifest driver are bundled in the same plugin, but should not be used manually by users. 
@@ -9,8 +8,8 @@ The basic procedure is as follows:
 2. Connect a Cryptomatte shader to AOV shaders in the render globals. (In Maya and Cinema4D this is automatic and can be skipped). 
 3. Render to EXR to disk. You'll get the AOV expanded into all the Cryptomatte data, with metadata. 
 
-### Per-DCC documentation:
-* Solid Angle has provided documentation for usage in the various *toA plugins:
+### Per-DCC documentation
+* Solid Angle has provided documentation for usage in the various &ast;toA plugins:
   * [MtoA (Maya)](https://support.solidangle.com/display/A5AFMUG/Cryptomatte)
   * [HtoA (Houdini)](https://support.solidangle.com/display/A5AFHUG/Cryptomatte)
   * [C4DtoA (Cinema 4D)](https://support.solidangle.com/display/A5AFCUG/Cryptomatte)
@@ -37,7 +36,9 @@ The AOV ports define which AOVs the Cryptomattes are created in. It's recommende
 See user defined Cryptomattes below. 
 
 ## Overrides
+
 ### Standard Cryptomattes Overrides
+
 There are also override mechanisms for changing the names of objects. These are all controlled through user data. The user data may be per object, polygon, curve, instance, etc. Manifests work properly with these, with some exceptions, such as the case of integer offsets on instanced objects. 
 
 Setting user data in DCCs:
@@ -45,8 +46,7 @@ Setting user data in DCCs:
 * Cinema4D: [See User Data](https://support.solidangle.com/display/A5AFCUG/User+Data)
 * Houdini: [See Attributes](https://support.solidangle.com/display/A5AFHUG/Attributes)
 
-#### Name overrides (type: string)
-
+#### Name overrides (type: string) 
 To override names used by Cryptomatte, user data of the following names may be used. They should be applied to the shape.
 
 * `crypto_asset` - Overrides the shape's name in the "asset" Cryptomatte, if defined. 
@@ -56,7 +56,6 @@ To override names used by Cryptomatte, user data of the following names may be u
 _Maya example: to override asset name, add a string parameter named `mtoa_constant_crypto_asset` to a shape, and set that value to whatever you would like the name to be._
 
 #### "Offset" overrides (type: integer)
-
 `crypto_asset_offset`
 `crypto_object_offset`
 `crypto_material_offset`
@@ -86,7 +85,6 @@ _Maya example: to create a user-defined Cryptomatte:
 (4) Set "Source Name" to "MyUData" and "AOV Name" to "MyCryptomatte"._
 
 ## Name Processing
-
 All mattes are based on names. If two objects are named "horse", either through overrides or processed names, they will both belong to the same matte. Object names are material names are used for mattes. 
 
 Asset matte might be better called "namespace". It contains, by default, information that is extracted from the object name. This is complicated because different DCCS have wildly different naming conventions, and may be mixed style in the same scenes when sharing ass files. 
