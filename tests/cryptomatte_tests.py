@@ -7,19 +7,21 @@
 import tests
 import os
 import json
+import tempfile
+import unittest
 
+import arnold as ai
 
 def get_all_cryptomatte_tests():
     return [
         Cryptomatte000, Cryptomatte001, Cryptomatte002, Cryptomatte003,
-        Cryptomatte010, Cryptomatte020, Cryptomatte030
+        Cryptomatte010, Cryptomatte020, Cryptomatte030, CryptomatteSetup
     ]
 
 
 #############################################
 # Cryptomatte test base class
 #############################################
-
 
 class CryptomatteTestBase(tests.KickAndCompareTestCase):
     ass = ""
@@ -506,3 +508,123 @@ class Cryptomatte030(CryptomatteTestBase):
 
     def test_non_cryptomatte_pixels(self):
         self.assertNonCryptomattePixelsMatch()
+
+
+class CryptomatteSetup(unittest.TestCase):
+
+    def setUp(self):
+        self.output_file_name = os.path.join(tempfile.gettempdir(), "result.exr")
+
+        ai.AiBegin()
+        ai.AiMsgSetConsoleFlags(ai.AI_LOG_NONE)
+        ai.AiMsgSetConsoleFlags(ai.AI_LOG_WARNINGS | ai.AI_LOG_ERRORS)
+
+        options = ai.AiUniverseGetOptions()
+        ai.AiNodeSetBool(options, "skip_license_check", True)
+        ai.AiNodeSetInt(options, "xres", 16);
+        ai.AiNodeSetInt(options, "yres", 16);
+
+        self.my_camera = ai.AiNode("persp_camera", "my_camera", None)
+        self.my_filter = ai.AiNode("gaussian_filter", "my_filter", None)
+        self.my_driver = ai.AiNode("driver_exr", "my_driver", None)
+        self.my_cryptomatte = ai.AiNode("cryptomatte", "my_cryptomatte", None)
+
+        ai.AiNodeSetStr(self.my_driver, "filename", self.output_file_name)
+        ai.AiNodeSetPtr(options, "aov_shaders", self.my_cryptomatte)
+
+    def tearDown(self):
+        if os.path.exists(self.output_file_name):
+            os.remove(self.output_file_name)
+        ai.AiEnd()
+        
+    def list_to_array(self, python_list):
+        arnold_array = ai.AiArrayAllocate(len(python_list), 1, ai.AI_TYPE_STRING)
+        for i, element in enumerate(python_list):
+            ai.AiArraySetStr(arnold_array, i, element)
+        return arnold_array
+
+    def array_to_list(self, arnold_array):
+        py_list = [] 
+        for i in xrange(ai.AiArrayGetNumElements(arnold_array)):
+            py_list.append(ai.AiArrayGetStr(arnold_array, i))
+        return py_list
+
+    def test_half_driver(self):
+        """ Tests setup of outputs occurs correctly with a half precision driver 
+        All non-cryptomatte aovs should be set to half, after driver is set to full.
+        """
+        ai.AiNodeSetBool(self.my_driver, "half_precision", True)
+
+        outputs_init = [
+            "RGBA RGBA my_filter my_driver",
+            "test_aov1 RGB my_filter my_driver HALF",
+            "crypto_asset RGBA my_filter my_driver",
+        ]
+        correct_outputs = [
+            "RGBA RGBA my_filter my_driver HALF",
+            "test_aov1 RGB my_filter my_driver HALF",
+            "crypto_asset RGBA cryptomatte_noop_filter my_driver HALF",
+            "crypto_asset00 FLOAT crypto_asset_filter00 my_driver",
+            "crypto_asset01 FLOAT crypto_asset_filter01 my_driver",
+            "crypto_asset02 FLOAT crypto_asset_filter02 my_driver",
+        ]
+        self._test_setup(outputs_init, correct_outputs)
+
+    def test_full_driver(self):
+        """ Tests setup of outputs occurs correctly with a full precision driver 
+        HALF aovs should be preserved, but no new AOVs should be set to HALF.
+        """
+        ai.AiNodeSetBool(self.my_driver, "half_precision", False)
+        
+        outputs_init = [
+            "RGBA RGBA my_filter my_driver",
+            "test_aov1 RGB my_filter my_driver HALF",
+            "crypto_asset RGBA my_filter my_driver",
+        ]
+        correct_outputs = [
+            "RGBA RGBA my_filter my_driver",
+            "test_aov1 RGB my_filter my_driver HALF",
+            "crypto_asset RGBA cryptomatte_noop_filter my_driver",
+            "crypto_asset00 FLOAT crypto_asset_filter00 my_driver",
+            "crypto_asset01 FLOAT crypto_asset_filter01 my_driver",
+            "crypto_asset02 FLOAT crypto_asset_filter02 my_driver",
+        ]
+        self._test_setup(outputs_init, correct_outputs)
+
+    def test_driver_preview(self):
+        """ Tests setup of outputs occurs correctly with a full precision driver 
+        HALF aovs should be preserved, but no new AOVs should be set to HALF.
+        """
+        ai.AiNodeSetBool(self.my_driver, "half_precision", False)
+        ai.AiNodeSetBool(self.my_cryptomatte, "preview_in_exr", True)
+
+        outputs_init = [
+            "RGBA RGBA my_filter my_driver",
+            "crypto_asset RGBA my_filter my_driver",
+        ]
+        correct_outputs = [
+            "RGBA RGBA my_filter my_driver",
+            "crypto_asset RGBA my_filter my_driver",
+            "crypto_asset00 FLOAT crypto_asset_filter00 my_driver",
+            "crypto_asset01 FLOAT crypto_asset_filter01 my_driver",
+            "crypto_asset02 FLOAT crypto_asset_filter02 my_driver",
+        ]
+        self._test_setup(outputs_init, correct_outputs)
+
+    def _test_setup(self, outputs_init, correct_outputs):
+        """ Tests setup of outputs occurs correctly with a full precision driver 
+        HALF aovs should be preserved, but no new AOVs should be set to HALF.
+        """
+        options = ai.AiUniverseGetOptions()
+        orig_num = len(outputs_init)
+
+        ai.AiNodeSetArray(options, "outputs", self.list_to_array(outputs_init));
+
+        ai.AiRender()
+
+        found_outputs = self.array_to_list(ai.AiNodeGetArray(options, "outputs"))
+
+        # check original aovs
+        self.assertEqual(correct_outputs[:orig_num], found_outputs[:orig_num])
+        # check addutional aovs
+        self.assertEqual(correct_outputs[orig_num:], found_outputs[orig_num:])
