@@ -1040,103 +1040,81 @@ private:
         const AtArray* outputs = AiNodeGetArray(render_options, "outputs");
         const uint32_t prev_output_num = AiArrayGetNumElements(outputs);
 
-        AtNode* noop_filter = option_exr_preview_channels ? nullptr : get_or_create_noop_filter();
-
         // if a driver is set to half, it needs to be set to full,
         // and its non-cryptomatte outputs need to be set to half.
-        std::unordered_set<AtNode*> half_modified;
-        std::vector<AtNode*> half_modifiable(prev_output_num);
+        std::unordered_set<AtNode*> half_modified_drivers;
+        std::vector<bool> outputs_flagged_half(prev_output_num);
+        std::vector<AtNode*> outputs_drivers(prev_output_num);
+        StringVector outputs_orig(prev_output_num);
 
-        std::vector<std::vector<AtNode*>> tmp_uc_drivers_vv(user_cryptomattes.count);
-
-        std::vector<AtNode*> driver_cryptoAsset_v, driver_cryptoObject_v, driver_cryptoMaterial_v;
-        StringVector new_outputs;
-        StringVector old_outputs;
+        std::vector<AtNode*> driver_asset, driver_object, driver_material;
+        std::vector<std::vector<AtNode*>> tmp_uc_drivers(user_cryptomattes.count);
+        StringVector outputs_new;
 
         for (uint32_t i = 0; i < prev_output_num; i++) {
             size_t output_string_chars = AiArrayGetStr(outputs, i).length();
-            AtString output_string = AiArrayGetStr(outputs, i);
-            char temp_string[MAX_STRING_LENGTH * 8];
-            memset(temp_string, 0, sizeof(temp_string));
-            strncpy(temp_string, output_string.c_str(), output_string.length());
-            temp_string[sizeof(temp_string) - 1] =
-                '\0'; // ensure null termination for very long output
+            const AtString output_string = AiArrayGetStr(outputs, i);
 
-            char* c0 = strtok(temp_string, " ");
-            char* c1 = strtok(nullptr, " ");
-            char* c2 = strtok(nullptr, " ");
-            char* c3 = strtok(nullptr, " ");
-            char* c4 = strtok(nullptr, " ");
-            char* c5 = strtok(nullptr, " ");
+            char* temp_string = strdup(output_string.c_str());
+            const std::string c0 = to_string_safe(strtok(temp_string, " "));
+            const std::string c1 = to_string_safe(strtok(nullptr, " "));
+            const std::string c2 = to_string_safe(strtok(nullptr, " "));
+            const std::string c3 = to_string_safe(strtok(nullptr, " "));
+            const std::string c4 = to_string_safe(strtok(nullptr, " "));
+            const std::string c5 = to_string_safe(strtok(nullptr, " "));
+            free(temp_string);
 
-            bool short_output = (c4 == nullptr || strncmp(c4, "HALF", 4) == 0);
+            const bool no_camera = c4.empty() || c4 == std::string("HALF");
+            const bool half_tok_present = (no_camera ? c4 : c5) == std::string("HALF");
 
-            char* camera_name = short_output ? nullptr : c0;
-            char* aov_name = short_output ? c0 : c1;
-            char* aov_type = short_output ? c1 : c2;
-            char* filter_name = short_output ? c2 : c3;
-            char* driver_name = short_output ? c3 : c4;
-            char* output_half = short_output ? c4 : c5;
+            const std::string camera_tok = no_camera ? "" : c0;
+            const std::string aov_name_tok = no_camera ? c0 : c1;
+            const std::string aov_type_tok = no_camera ? c1 : c2;
+            const std::string filter_tok = no_camera ? c2 : c3;
+            const std::string driver_tok = no_camera ? c3 : c4;
 
-            AtNode* driver = AiNodeLookUpByName(driver_name);
+            AtNode* driver = AiNodeLookUpByName(driver_tok.c_str());
 
-            const bool flagged_half = output_half && strncmp(output_half, "HALF", 4) == 0;
-            half_modifiable[i] = flagged_half ? nullptr : driver;
-
-            AtArray* cryptoAOVs = nullptr;
-
-            if (strcmp(aov_name, aov_cryptoasset.c_str()) == 0) {
-                aov_array_cryptoasset = AiArrayAllocate(option_aov_depth, 1, AI_TYPE_STRING);
-                cryptoAOVs = aov_array_cryptoasset;
-                driver_cryptoAsset_v.push_back(driver);
-            } else if (strcmp(aov_name, aov_cryptoobject.c_str()) == 0) {
-                aov_array_cryptoobject = AiArrayAllocate(option_aov_depth, 1, AI_TYPE_STRING);
-                cryptoAOVs = aov_array_cryptoobject;
-                driver_cryptoObject_v.push_back(driver);
-            } else if (strcmp(aov_name, aov_cryptomaterial.c_str()) == 0) {
-                aov_array_cryptomaterial = AiArrayAllocate(option_aov_depth, 1, AI_TYPE_STRING);
-                cryptoAOVs = aov_array_cryptomaterial;
-                driver_cryptoMaterial_v.push_back(driver);
-            } else if (user_cryptomattes.count != 0) {
+            AtArray* crypto_aovs = nullptr;
+            if (aov_name_tok == std::string(aov_cryptoasset)) {
+                crypto_aovs = aov_array_cryptoasset = allocate_aov_names();
+                driver_asset.push_back(driver);
+            } else if (aov_name_tok == std::string(aov_cryptoobject)) {
+                crypto_aovs = aov_array_cryptoobject = allocate_aov_names();
+                driver_object.push_back(driver);
+            } else if (aov_name_tok == std::string(aov_cryptomaterial)) {
+                crypto_aovs = aov_array_cryptomaterial = allocate_aov_names();
+                driver_material.push_back(driver);
+            } else {
                 for (size_t j = 0; j < user_cryptomattes.count; j++) {
                     const char* user_aov_name = user_cryptomattes.aovs[j].c_str();
-                    if (strcmp(aov_name, user_aov_name) == 0) {
-                        // will be destroyed when cryptomatteData is
-                        user_cryptomattes.aov_arrays[j] = AiArrayAllocate(option_aov_depth, 1, AI_TYPE_STRING);
-                        cryptoAOVs = user_cryptomattes.aov_arrays[j];
-                        tmp_uc_drivers_vv[j].push_back(driver);
+                    if (aov_name_tok == std::string(user_aov_name)) {
+                        crypto_aovs = user_cryptomattes.aov_arrays[j] = allocate_aov_names();
+                        tmp_uc_drivers[j].push_back(driver);
                         break;
                     }
                 }
             }
 
-            std::string orig_output_str = output_string;
-
-            if (cryptoAOVs) {
-                const bool half = AiNodeGetBool(driver, "half_precision"),
-                           usable_driver = check_driver(driver);
-                if (usable_driver && half) 
-                    half_modified.insert(driver);
-                for (uint32_t j = 0; j < option_aov_depth; j++)
-                    AiArraySetStr(cryptoAOVs, j, "");
-                create_AOV_array(aov_name, filter_name, camera_name, driver, cryptoAOVs,
-                                 new_outputs);
-                if (usable_driver && !option_exr_preview_channels) {
-                    orig_output_str = "";
-                    if (camera_name)
-                        orig_output_str += std::string(camera_name) + " ";
-                    orig_output_str += std::string(aov_name) + " ";
-                    orig_output_str += std::string(aov_type) + " ";
-                    orig_output_str += std::string(AiNodeGetName(noop_filter)) + " ";
-                    orig_output_str += AiNodeGetName(driver);
-                    if (output_half)
-                        orig_output_str += " HALF";
+            std::string output_str = output_string;
+            if (crypto_aovs && check_driver(driver)) {
+                create_AOV_array(aov_name_tok, filter_tok, camera_tok, driver, crypto_aovs,
+                                 outputs_new);
+                if (AiNodeGetBool(driver, "half_precision")) {
+                    AiNodeSetBool(driver, "half_precision", false);
+                    half_modified_drivers.insert(driver);
                 }
+                if (!option_exr_preview_channels)
+                    output_str = noop_output_str(camera_tok, aov_name_tok, aov_type_tok, driver,
+                                                 half_tok_present);
             }
-            old_outputs.push_back(orig_output_str.c_str()); // keep output the same
+
+            outputs_orig[i] = output_str;
+            outputs_flagged_half[i] = half_tok_present;
+            outputs_drivers[i] = driver;
         }
 
-        if (new_outputs.size()) {
+        if (outputs_new.size()) {
             if (option_sidecar_manifests) {
                 AtString manifest_driver_name("cryptomatte_manifest_driver");
                 AtNode* manifest_driver = AiNodeLookUpByName(manifest_driver_name);
@@ -1145,30 +1123,80 @@ private:
                     AiNodeSetStr(manifest_driver, "name", manifest_driver_name);
                 }
                 AiNodeSetLocalData(manifest_driver, this);
-                new_outputs.push_back(manifest_driver_name.c_str());
+                outputs_new.push_back(manifest_driver_name.c_str());
             }
 
-            // Does not need destruction
-            AtArray* final_outputs = AiArrayAllocate(
-                uint32_t(old_outputs.size() + new_outputs.size()), 1, AI_TYPE_STRING);
+            const uint32_t nb_outputs = uint32_t(outputs_orig.size() + outputs_new.size());
+            AtArray* final_outputs = AiArrayAllocate(nb_outputs, 1, AI_TYPE_STRING);
+
             // Add old outputs (with "HALF" appended where appropriate)
-            for (int i = 0; i < old_outputs.size(); i++) {
-                auto output = old_outputs[i];
-                if (half_modified.count(half_modifiable[i]))
+            for (int i = 0; i < outputs_orig.size(); i++) {
+                // if outputs are not flagged as half, and their drivers are modified
+                // the output must also be modified.
+                auto output = outputs_orig[i];
+                if (!outputs_flagged_half[i] && half_modified_drivers.count(outputs_drivers[i]))
                     output = std::string(output) + " HALF";
-                AiArraySetStr(final_outputs, uint32_t(i), AtString(output.c_str()));
+                outputs_orig[i] = output;
             }
-            // Add new outputs
-            for (int i = 0; i < new_outputs.size(); i++)
-                AiArraySetStr(final_outputs, uint32_t(i + old_outputs.size()),
-                              new_outputs[i].c_str());
+
+            // Rebuild AtArray of outputs
+            for (int i = 0; i < outputs_orig.size(); i++)
+                AiArraySetStr(final_outputs, uint32_t(i), outputs_orig[i].c_str());
+            for (int i = 0; i < outputs_new.size(); i++)
+                AiArraySetStr(final_outputs, uint32_t(i + outputs_orig.size()),
+                              outputs_new[i].c_str());
 
             AiNodeSetArray(render_options, "outputs", final_outputs);
         }
 
-        build_standard_metadata(driver_cryptoAsset_v, driver_cryptoObject_v,
-                                driver_cryptoMaterial_v);
-        build_user_metadata(tmp_uc_drivers_vv);
+        build_standard_metadata(driver_asset, driver_object, driver_material);
+        build_user_metadata(tmp_uc_drivers);
+    }
+
+    AtNode* get_or_create_noop_filter() const {
+        const static AtString noop_filter_name("cryptomatte_noop_filter");
+        AtNode* filter = AiNodeLookUpByName(noop_filter_name);
+        if (!filter) {
+            filter = AiNode("cryptomatte_filter", noop_filter_name, nullptr);
+            AiNodeSetBool(filter, "noop", true);
+        }
+        return filter;
+    }
+
+    std::string noop_output_str(const std::string& camera_tok, const std::string& aov_name_tok,
+                                const std::string& aov_type_tok, const AtNode* driver,
+                                const bool half_tok_present) const {
+        // disable the exr preview channels by replacing the filter with a noop
+        AtNode* noop_filter = option_exr_preview_channels ? nullptr : get_or_create_noop_filter();
+
+        std::string output_str("");
+        if (!camera_tok.empty()) {
+            output_str.append(camera_tok);
+            output_str.append(" ");
+        }
+        output_str.append(aov_name_tok);
+        output_str.append(" ");
+        output_str.append(aov_type_tok);
+        output_str.append(" ");
+        output_str.append(AiNodeGetName(noop_filter));
+        output_str.append(" ");
+        output_str.append(AiNodeGetName(driver));
+        if (half_tok_present) // output was already flagged half
+            output_str.append(" HALF");
+        return output_str;
+    }
+
+    std::string to_string_safe(const char* c_str) const {
+        // returns empty string if c_str is null
+        return c_str ? c_str : "";
+    }
+
+    AtArray* allocate_aov_names() const {
+        // allocates and blanks an AOV array
+        AtArray* aovs = AiArrayAllocate(option_aov_depth, 1, AI_TYPE_STRING);
+        for (uint32_t j = 0; j < option_aov_depth; j++)
+            AiArraySetStr(aovs, j, "");
+        return aovs;
     }
 
     void setup_deferred_manifest(AtNode* driver, AtString token, std::string& path_out,
@@ -1297,27 +1325,27 @@ private:
         AiNodeIteratorDestroy(shape_iterator);
     }
 
-    void build_standard_metadata(const std::vector<AtNode*>& driver_asset_v,
-                                 const std::vector<AtNode*>& driver_object_v,
-                                 const std::vector<AtNode*>& driver_material_v) {
+    void build_standard_metadata(const std::vector<AtNode*>& driver_asset,
+                                 const std::vector<AtNode*>& driver_object,
+                                 const std::vector<AtNode*>& driver_material) {
         clock_t metadata_start_time = clock();
 
         bool do_md_asset = false, do_md_object = false, do_md_material = false;
-        for (auto& driver_asset : driver_asset_v) {
+        for (auto& driver_asset : driver_asset) {
             if (metadata_needed(driver_asset, aov_cryptoasset)) {
                 do_md_asset = true;
                 metadata_set_unneeded(driver_asset, aov_cryptoasset);
                 break;
             }
         }
-        for (auto& driver_object : driver_object_v) {
+        for (auto& driver_object : driver_object) {
             if (metadata_needed(driver_object, aov_cryptoobject)) {
                 do_md_object = true;
                 metadata_set_unneeded(driver_object, aov_cryptoobject);
                 break;
             }
         }
-        for (auto& driver_material : driver_material_v) {
+        for (auto& driver_material : driver_material) {
             if (metadata_needed(driver_material, aov_cryptomaterial)) {
                 do_md_material = true;
                 metadata_set_unneeded(driver_material, aov_cryptomaterial);
@@ -1335,25 +1363,24 @@ private:
                                        map_md_object, map_md_material);
 
         std::string manif_asset_m, manif_object_m, manif_material_m;
-        manif_asset_paths.resize(driver_asset_v.size());
-        for (size_t i = 0; i < driver_asset_v.size(); i++) {
-            setup_deferred_manifest(driver_asset_v[i], aov_cryptoasset, manif_asset_paths[i],
+        manif_asset_paths.resize(driver_asset.size());
+        for (size_t i = 0; i < driver_asset.size(); i++) {
+            setup_deferred_manifest(driver_asset[i], aov_cryptoasset, manif_asset_paths[i],
                                     manif_asset_m);
-            write_metadata_to_driver(driver_asset_v[i], aov_cryptoasset, map_md_asset,
-                                     manif_asset_m);
+            write_metadata_to_driver(driver_asset[i], aov_cryptoasset, map_md_asset, manif_asset_m);
         }
-        manif_object_paths.resize(driver_object_v.size());
-        for (size_t i = 0; i < driver_object_v.size(); i++) {
-            setup_deferred_manifest(driver_object_v[i], aov_cryptoobject, manif_object_paths[i],
+        manif_object_paths.resize(driver_object.size());
+        for (size_t i = 0; i < driver_object.size(); i++) {
+            setup_deferred_manifest(driver_object[i], aov_cryptoobject, manif_object_paths[i],
                                     manif_object_m);
-            write_metadata_to_driver(driver_object_v[i], aov_cryptoobject, map_md_object,
+            write_metadata_to_driver(driver_object[i], aov_cryptoobject, map_md_object,
                                      manif_object_m);
         }
-        manif_material_paths.resize(driver_material_v.size());
-        for (size_t i = 0; i < driver_material_v.size(); i++) {
-            setup_deferred_manifest(driver_material_v[i], aov_cryptomaterial,
-                                    manif_material_paths[i], manif_material_m);
-            write_metadata_to_driver(driver_material_v[i], aov_cryptomaterial, map_md_material,
+        manif_material_paths.resize(driver_material.size());
+        for (size_t i = 0; i < driver_material.size(); i++) {
+            setup_deferred_manifest(driver_material[i], aov_cryptomaterial, manif_material_paths[i],
+                                    manif_material_m);
+            write_metadata_to_driver(driver_material[i], aov_cryptomaterial, map_md_material,
                                      manif_material_m);
         }
 
@@ -1422,26 +1449,14 @@ private:
                   float(clock() - metadata_start_time) / CLOCKS_PER_SEC);
     }
 
-    void create_AOV_array(const char* aov_name, const char* filter_name, const char* camera_name,
-                          AtNode* driver, AtArray* cryptoAOVs, StringVector& new_ouputs) {
-        // helper for setup_cryptomatte_nodes. Populates cryptoAOVs and returns
-        // the number of new outputs created.
-        if (!check_driver(driver)) {
-            AiMsgWarning("Cryptomatte: Can only write Cryptomatte to EXR files.");
-            return;
-        }
+    void create_AOV_array(const std::string& aov_name, const std::string& filter_name,
+                          const std::string& camera_name, AtNode* driver, AtArray* crypto_aovs,
+                          StringVector& new_ouputs) const {
+        // Populates crypto_aovs and new_outputs
 
-        ///////////////////////////////////////////////
-        //      Compile info about original filter
+        AtNode* orig_filter = AiNodeLookUpByName(filter_name.c_str());
 
-        AtNode* orig_filter = AiNodeLookUpByName(filter_name);
-
-        ///////////////////////////////////////////////
-        //      Set CryptoAOV driver to full precision and outlaw RLE
-
-        // output strings should have already had "HALF" appended.
-        AiNodeSetBool(driver, "half_precision", false);
-
+        // Outlaw RLE, dwaa, dwab
         const AtEnum compressions =
             AiParamGetEnum(AiNodeEntryLookUpParameter(AiNodeGetNodeEntry(driver), "compression"));
         const int compression = AiNodeGetInt(driver, "compression");
@@ -1458,66 +1473,45 @@ private:
             AiNodeSetStr(driver, "compression", "zip");
         }
 
-        AiAOVRegister(aov_name, AI_TYPE_RGB, AI_AOV_BLEND_OPACITY);
+        // ensure AI_AOV_BLEND_OPACITY is enabled
+        AiAOVRegister(aov_name.c_str(), AI_TYPE_RGB, AI_AOV_BLEND_OPACITY);
 
         AtArray* outputs = AiNodeGetArray(AiUniverseGetOptions(), "outputs");
 
-        std::unordered_set<std::string> outputSet;
+        std::unordered_set<std::string> output_set;
         for (uint32_t i = 0; i < AiArrayGetNumElements(outputs); i++)
-            outputSet.insert(std::string(AiArrayGetStr(outputs, i)));
+            output_set.insert(std::string(AiArrayGetStr(outputs, i)));
 
-        ///////////////////////////////////////////////
-        //      Create filters and outputs as needed
+        // Create filters and outputs as needed
         for (int i = 0; i < option_aov_depth; i++) {
-            char filter_rank_name[MAX_STRING_LENGTH];
-            memset(filter_rank_name, 0, MAX_STRING_LENGTH);
+            char rank_num[3];
+            sprintf(rank_num, "%002d", i);
 
-            char aov_rank_name[MAX_STRING_LENGTH];
-            memset(aov_rank_name, 0, MAX_STRING_LENGTH);
+            const std::string filter_rank_name = aov_name + "_filter" + rank_num;
+            const std::string aov_rank_name = aov_name + rank_num;
 
-            size_t aov_name_chars = strlen(aov_name);
-            strncpy(filter_rank_name, aov_name, aov_name_chars);
-            strncpy(aov_rank_name, aov_name, aov_name_chars);
-
-            char rank_number_string[MAX_STRING_LENGTH];
-            memset(rank_number_string, 0, MAX_STRING_LENGTH);
-            sprintf(rank_number_string, "%002d", i);
-
-            strcat(filter_rank_name, "_filter");
-            strcat(filter_rank_name, rank_number_string);
-            strcat(aov_rank_name, rank_number_string);
-
-            if (AiNodeLookUpByName(filter_rank_name) == nullptr)
-                AtNode* filter = create_filter(orig_filter, filter_rank_name, i);
+            if (AiNodeLookUpByName(filter_rank_name.c_str()) == nullptr)
+                AtNode* filter = create_filter(orig_filter, filter_rank_name.c_str(), i);
 
             std::string new_output_str;
-            if (camera_name)
-                new_output_str += std::string(camera_name) + " ";
-            new_output_str += aov_rank_name;
-            new_output_str += " ";
-            new_output_str += "FLOAT";
-            new_output_str += " ";
-            new_output_str += filter_rank_name;
-            new_output_str += " ";
-            new_output_str += AiNodeGetName(driver);
+            if (!camera_name.empty()) {
+                new_output_str.append(camera_name);
+                new_output_str.append(" ");
+            }
+            new_output_str.append(aov_rank_name);
+            new_output_str.append(" FLOAT ");
+            new_output_str.append(filter_rank_name);
+            new_output_str.append(" ");
+            new_output_str.append(AiNodeGetName(driver));
 
-            if (outputSet.find(new_output_str) == outputSet.end()) {
-                AiAOVRegister(aov_rank_name, AI_TYPE_FLOAT, AI_AOV_BLEND_NONE);
+            if (!output_set.count(new_output_str)) {
+                AiAOVRegister(aov_rank_name.c_str(), AI_TYPE_FLOAT, AI_AOV_BLEND_NONE);
                 new_ouputs.push_back(new_output_str.c_str());
             }
-            AiArraySetStr(cryptoAOVs, i, aov_rank_name);
+            AiArraySetStr(crypto_aovs, i, aov_rank_name.c_str());
         }
     }
 
-    AtNode* get_or_create_noop_filter() const {
-        const AtString noop_filter_name("cryptomatte_noop_filter");
-        AtNode* filter = AiNodeLookUpByName(noop_filter_name);
-        if (!filter) {   
-            filter = AiNode("cryptomatte_filter", noop_filter_name, nullptr);
-            AiNodeSetBool(filter, "noop", true);
-        }
-        return filter;
-    }
     AtNode* create_filter(const AtNode* orig_filter, const char* filter_rank_name,
                           int aovindex) const {
         float aFilter_width = 2.0;
