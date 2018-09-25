@@ -1098,7 +1098,7 @@ private:
                 }
             }
 
-            string output_str = output_string;
+            string updated_output = output_string.c_str();
             if (crypto_aovs && check_driver(driver)) {
                 create_AOV_array(aov_name_tok, filter_tok, camera_tok, driver, crypto_aovs,
                                  outputs_new);
@@ -1107,11 +1107,11 @@ private:
                     half_modified_drivers.insert(driver);
                 }
                 if (!option_exr_preview_channels)
-                    output_str = noop_output_str(camera_tok, aov_name_tok, aov_type_tok, driver,
-                                                 half_tok_present);
+                    updated_output = noop_output_str(camera_tok, aov_name_tok, aov_type_tok, driver,
+                                                     half_tok_present);
             }
 
-            outputs_orig[i] = output_str;
+            outputs_orig[i] = updated_output;
             outputs_flagged_half[i] = half_tok_present;
             outputs_drivers[i] = driver;
         }
