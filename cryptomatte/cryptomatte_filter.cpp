@@ -142,12 +142,12 @@ void write_to_samples_map(sw_map_t* vals, float hash, float sample_weight) {
 ///////////////////////////////////////////////
 
 filter_pixel {
-    AtRGBA* out_value = (AtRGBA*)data_out;
-    *out_value = AI_RGBA_ZERO;
-
     CryptomatteFilterData* data = (CryptomatteFilterData*)AiNodeGetLocalData(node);
     if (data->noop)
         return;
+
+    AtRGBA* out_value = (AtRGBA*)data_out;
+    *out_value = AI_RGBA_ZERO;
 
     ///////////////////////////////////////////////
     //
