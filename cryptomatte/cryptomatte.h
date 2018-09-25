@@ -1145,8 +1145,7 @@ private:
             for (int i = 0; i < outputs_orig.size(); i++)
                 AiArraySetStr(final_outputs, uint32_t(i), outputs_orig[i].c_str());
             for (int i = 0; i < outputs_new.size(); i++)
-                AiArraySetStr(final_outputs, uint32_t(i + outputs_orig.size()),
-                              outputs_new[i].c_str());
+                AiArraySetStr(final_outputs, uint32_t(i + prev_output_num), outputs_new[i].c_str());
 
             AiNodeSetArray(render_options, "outputs", final_outputs);
         }
