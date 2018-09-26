@@ -35,6 +35,7 @@ class KickAndCompareTestCase(unittest.TestCase):
     ass = ""
     arnold_v = 1
     arnold_t = 4
+    arnold_nw = 20
 
     @classmethod
     def setUpClass(self):
@@ -81,8 +82,8 @@ class KickAndCompareTestCase(unittest.TestCase):
         ]
         assert not remaining_files, "Files were not cleaned up: %s " % remaining_files
 
-        cmd = 'kick -v {v} -t {t} -dp -dw -sl -nostdin -logfile {log} -i {ass}'.format(
-            v=self.arnold_v, t=self.arnold_t, log=self.result_log, ass=ass_file_name)
+        cmd = 'kick -v {v} -t {t} -nw {nw} -dp -dw -sl -nostdin -logfile {log} -i {ass}'.format(
+            v=self.arnold_v, t=self.arnold_t, nw=self.arnold_nw, log=self.result_log, ass=ass_file_name)
         cwd = test_dir.replace("\\", "/")
         print cmd, cwd
         env = os.environ.copy()
