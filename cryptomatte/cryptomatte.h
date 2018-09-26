@@ -959,7 +959,6 @@ private:
     ///////////////////////////////////////////////
 
     struct TokenizedOutput {
-    public:
         String camera_tok = "";
         String aov_name_tok = "";
         String aov_type_tok = "";
@@ -1019,7 +1018,6 @@ private:
 
         bool aov_matches(const char* str) const { return aov_name_tok == String(str); }
 
-    private:
         String to_string_safe(const char* c_str) const { return c_str ? c_str : ""; }
     };
 
