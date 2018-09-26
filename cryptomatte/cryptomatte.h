@@ -777,21 +777,6 @@ inline void add_obj_to_manifest(const AtNode* node, char name[MAX_STRING_LENGTH]
 
 ///////////////////////////////////////////////
 //
-//      AOV utilities
-//
-///////////////////////////////////////////////
-
-inline void write_array_of_AOVs(AtShaderGlobals* sg, const AtArray* names, float id) {
-    for (uint32_t i = 0; i < AiArrayGetNumElements(names); i++) {
-        AtString aovName = AiArrayGetStr(names, i);
-        if (aovName.empty())
-            return;
-        AiAOVSetFlt(sg, aovName, id);
-    }
-}
-
-///////////////////////////////////////////////
-//
 //      CryptomatteCache
 //
 ///////////////////////////////////////////////
@@ -949,7 +934,7 @@ public:
     }
 
     ~CryptomatteData() { destroy_arrays(); }
-    
+
 private:
     void do_standard_cryptomattes(AtShaderGlobals* sg) {
         if (!aov_array_cryptoasset && !aov_array_cryptoobject && !aov_array_cryptomaterial)
@@ -1183,13 +1168,61 @@ private:
         build_user_metadata(tmp_uc_drivers);
     }
 
-    AtNode* setup_manifest_driver() {
-        AtString manifest_driver_name("cryptomatte_manifest_driver");
-        AtNode* manifest_driver = AiNodeLookUpByName(manifest_driver_name);
-        if (!manifest_driver)
-            manifest_driver = AiNode("cryptomatte_manifest_driver", manifest_driver_name, nullptr);
-        AiNodeSetLocalData(manifest_driver, this);
-        return manifest_driver;
+    void create_AOV_array(TokenizedOutput& t_output, AtArray* crypto_aovs,
+                          std::vector<TokenizedOutput>& new_outputs) const {
+        // Populates crypto_aovs and new_outputs
+        AtNode* orig_filter = AiNodeLookUpByName(t_output.filter_tok.c_str());
+
+        // Outlaw RLE, dwaa, dwab
+        const AtEnum compressions = AiParamGetEnum(
+            AiNodeEntryLookUpParameter(AiNodeGetNodeEntry(t_output.driver), "compression"));
+        const int compression = AiNodeGetInt(t_output.driver, "compression");
+        const bool cmp_rle = compression == AiEnumGetValue(compressions, "rle"),
+                   cmp_dwa = compression == AiEnumGetValue(compressions, "dwaa") ||
+                             compression == AiEnumGetValue(compressions, "dwab");
+        if (cmp_rle || cmp_dwa) {
+            if (cmp_rle)
+                AiMsgWarning("Cryptomatte cannot be set to RLE compression- it "
+                             "does not work on full float. Switching to Zip.");
+            if (cmp_dwa)
+                AiMsgWarning("Cryptomatte cannot be set to dwa compression- the "
+                             "compression breaks Cryptomattes. Switching to Zip.");
+            AiNodeSetStr(t_output.driver, "compression", "zip");
+        }
+
+        AtArray* outputs = AiNodeGetArray(AiUniverseGetOptions(), "outputs");
+
+        std::unordered_set<String> output_set;
+        for (uint32_t i = 0; i < AiArrayGetNumElements(outputs); i++)
+            output_set.insert(String(AiArrayGetStr(outputs, i)));
+
+        // Create filters and outputs as needed
+        for (int i = 0; i < option_aov_depth; i++) {
+            char rank_num[3];
+            sprintf(rank_num, "%002d", i);
+
+            const String filter_rank_name = t_output.aov_name_tok + "_filter" + rank_num;
+            const String aov_rank_name = t_output.aov_name_tok + rank_num;
+
+            if (AiNodeLookUpByName(filter_rank_name.c_str()) == nullptr)
+                AtNode* filter = create_filter(orig_filter, filter_rank_name.c_str(), i);
+
+            TokenizedOutput new_t_output = t_output;
+            new_t_output.aov_name_tok = aov_rank_name;
+            new_t_output.aov_type_tok = "FLOAT";
+            new_t_output.filter_tok = filter_rank_name;
+            new_t_output.half_flag = false;
+
+            String new_output_str = new_t_output.rebuild_output();
+            if (!output_set.count(new_output_str)) {
+                AiAOVRegister(aov_rank_name.c_str(), AI_TYPE_FLOAT, AI_AOV_BLEND_NONE);
+                new_outputs.push_back(new_t_output);
+                output_set.insert(new_output_str);
+            }
+
+            AiArraySetStr(crypto_aovs, i, aov_rank_name.c_str());
+        }
+    }
     }
 
     AtNode* get_or_create_noop_filter() const {
@@ -1209,6 +1242,27 @@ private:
             AiArraySetStr(aovs, i, "");
         return aovs;
     }
+
+    void write_array_of_AOVs(AtShaderGlobals* sg, const AtArray* names, float id) const {
+        for (uint32_t i = 0; i < AiArrayGetNumElements(names); i++) {
+            AtString aovName = AiArrayGetStr(names, i);
+            if (aovName.empty())
+                return;
+            AiAOVSetFlt(sg, aovName, id);
+        }
+    }
+
+    AtNode* setup_manifest_driver() {
+        AtString manifest_driver_name("cryptomatte_manifest_driver");
+        AtNode* manifest_driver = AiNodeLookUpByName(manifest_driver_name);
+        if (!manifest_driver)
+            manifest_driver = AiNode("cryptomatte_manifest_driver", manifest_driver_name, nullptr);
+        AiNodeSetLocalData(manifest_driver, this);
+        return manifest_driver;
+    }
+    ///////////////////////////////////////////////
+    //      Manifests and metadata
+    ///////////////////////////////////////////////
 
     void setup_deferred_manifest(AtNode* driver, AtString token, String& path_out,
                                  String& metadata_path_out) {
@@ -1451,64 +1505,6 @@ private:
                   float(clock() - metadata_start_time) / CLOCKS_PER_SEC);
     }
 
-    void create_AOV_array(TokenizedOutput& t_output, AtArray* crypto_aovs,
-                          std::vector<TokenizedOutput>& new_outputs) const {
-        // Populates crypto_aovs and new_outputs
-        AtNode* orig_filter = AiNodeLookUpByName(t_output.filter_tok.c_str());
-
-        // Outlaw RLE, dwaa, dwab
-        const AtEnum compressions =
-            AiParamGetEnum(AiNodeEntryLookUpParameter(AiNodeGetNodeEntry(t_output.driver), "compression"));
-        const int compression = AiNodeGetInt(t_output.driver, "compression");
-        const bool cmp_rle = compression == AiEnumGetValue(compressions, "rle"),
-                   cmp_dwa = compression == AiEnumGetValue(compressions, "dwaa") ||
-                             compression == AiEnumGetValue(compressions, "dwab");
-        if (cmp_rle || cmp_dwa) {
-            if (cmp_rle)
-                AiMsgWarning("Cryptomatte cannot be set to RLE compression- it "
-                             "does not work on full float. Switching to Zip.");
-            if (cmp_dwa)
-                AiMsgWarning("Cryptomatte cannot be set to dwa compression- the "
-                             "compression breaks Cryptomattes. Switching to Zip.");
-            AiNodeSetStr(t_output.driver, "compression", "zip");
-        }
-
-        // ensure AI_AOV_BLEND_OPACITY is enabled
-        AiAOVRegister(t_output.aov_name_tok.c_str(), AI_TYPE_RGB, AI_AOV_BLEND_OPACITY);
-
-        AtArray* outputs = AiNodeGetArray(AiUniverseGetOptions(), "outputs");
-
-        std::unordered_set<String> output_set;
-        for (uint32_t i = 0; i < AiArrayGetNumElements(outputs); i++)
-            output_set.insert(String(AiArrayGetStr(outputs, i)));
-
-        // Create filters and outputs as needed
-        for (int i = 0; i < option_aov_depth; i++) {
-            char rank_num[3];
-            sprintf(rank_num, "%002d", i);
-
-            const String filter_rank_name = t_output.aov_name_tok + "_filter" + rank_num;
-            const String aov_rank_name = t_output.aov_name_tok + rank_num;
-
-            if (AiNodeLookUpByName(filter_rank_name.c_str()) == nullptr)
-                AtNode* filter = create_filter(orig_filter, filter_rank_name.c_str(), i);
-
-            TokenizedOutput new_t_output = t_output;
-            new_t_output.aov_name_tok = aov_rank_name;
-            new_t_output.aov_type_tok = "FLOAT";
-            new_t_output.filter_tok = filter_rank_name;
-            new_t_output.half_flag = false;
-
-            String new_output_str = new_t_output.rebuild_output();
-            if (!output_set.count(new_output_str)) {
-                AiAOVRegister(aov_rank_name.c_str(), AI_TYPE_FLOAT, AI_AOV_BLEND_NONE);
-                new_outputs.push_back(new_t_output);
-                output_set.insert(new_output_str);
-            }
-
-            AiArraySetStr(crypto_aovs, i, aov_rank_name.c_str());
-        }
-    }
 
     AtNode* create_filter(const AtNode* orig_filter, const char* filter_rank_name,
                           int aovindex) const {
@@ -1548,5 +1544,4 @@ private:
         aov_array_cryptomaterial = nullptr;
         user_cryptomattes = UserCryptomattes();
     }
-
 };
