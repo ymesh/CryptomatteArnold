@@ -948,6 +948,8 @@ public:
         write_user_sidecar_manifests();
     }
 
+    ~CryptomatteData() { destroy_arrays(); }
+    
 private:
     void do_standard_cryptomattes(AtShaderGlobals* sg) {
         if (!aov_array_cryptoasset && !aov_array_cryptoobject && !aov_array_cryptomaterial)
@@ -1546,6 +1548,4 @@ private:
         user_cryptomattes = UserCryptomattes();
     }
 
-public:
-    ~CryptomatteData() { destroy_arrays(); }
 };
