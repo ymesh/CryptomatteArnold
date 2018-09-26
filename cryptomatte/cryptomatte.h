@@ -909,7 +909,7 @@ public:
         user_cryptomattes = UserCryptomattes(uc_aov_array, uc_src_array);
 
         crypto_crit_sec_enter();
-        setup_cryptomatte_nodes();
+        setup_outputs();
         crypto_crit_sec_leave();
     }
 
@@ -1104,7 +1104,7 @@ private:
         String to_string_safe(const char* c_str) const { return c_str ? c_str : ""; }
     };
 
-    void setup_cryptomatte_nodes() {
+    void setup_outputs() {
         const AtArray* outputs = AiNodeGetArray(AiUniverseGetOptions(), "outputs");
         const uint32_t prev_output_num = AiArrayGetNumElements(outputs);
         AtNode* noop_filter = option_exr_preview_channels ? nullptr : get_or_create_noop_filter();
