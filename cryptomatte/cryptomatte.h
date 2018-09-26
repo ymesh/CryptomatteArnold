@@ -1107,6 +1107,7 @@ private:
     void setup_cryptomatte_nodes() {
         const AtArray* outputs = AiNodeGetArray(AiUniverseGetOptions(), "outputs");
         const uint32_t prev_output_num = AiArrayGetNumElements(outputs);
+        AtNode* noop_filter = option_exr_preview_channels ? nullptr : get_or_create_noop_filter();
 
         // if a driver is set to half, it needs to be set to full,
         // and its non-cryptomatte outputs need to be set to half.
@@ -1146,8 +1147,8 @@ private:
                     AiNodeSetBool(t_output.driver, "half_precision", false);
                     modified_drivers.insert(t_output.driver);
                 }
-                if (!option_exr_preview_channels)
-                    t_output.filter_tok = AiNodeGetName(get_or_create_noop_filter());
+                if (noop_filter)
+                    t_output.filter_tok = AiNodeGetName(noop_filter);
             }
 
             outputs_orig[i] = t_output;
