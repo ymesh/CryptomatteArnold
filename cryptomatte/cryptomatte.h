@@ -641,71 +641,6 @@ inline void write_manifest_sidecar_file(const ManifestMap& map_md_asset,
     }
 }
 
-inline bool check_driver(AtNode* driver) {
-    return driver && AiNodeIs(driver, AtString("driver_exr"));
-}
-
-inline void write_metadata_to_driver(AtNode* driver, AtString cryptomatte_name,
-                                     const ManifestMap& map, String sidecar_manif_file) {
-    if (!check_driver(driver))
-        return;
-
-    AtArray* orig_md = AiNodeGetArray(driver, "custom_attributes");
-    const uint32_t orig_num_entries = orig_md ? AiArrayGetNumElements(orig_md) : 0;
-
-    String metadata_hash, metadata_conv, metadata_name,
-        metadata_manf; // the new entries
-    AtArray* combined_md =
-        AiArrayAllocate(orig_num_entries + 4, 1, AI_TYPE_STRING); // Does not need destruction
-
-    String prefix("STRING cryptomatte/");
-    char metadata_id_buffer[8];
-    compute_metadata_ID(metadata_id_buffer, cryptomatte_name);
-    prefix += String(metadata_id_buffer) + String("/");
-
-    for (uint32_t i = 0; i < orig_num_entries; i++) {
-        if (prefix.compare(AiArrayGetStr(orig_md, i)) == 0) {
-            AiMsgWarning("Cryptomatte: Unable to write metadata. EXR metadata "
-                         "key, %s, already in use.",
-                         prefix.c_str());
-            return;
-        }
-    }
-
-    metadata_hash = prefix + String("hash MurmurHash3_32");
-    metadata_conv = prefix + String("conversion uint32_to_float32");
-    metadata_name = prefix + String("name ") + cryptomatte_name.c_str();
-    if (sidecar_manif_file.length()) {
-        metadata_manf = prefix + String("manif_file ") + sidecar_manif_file;
-    } else {
-        metadata_manf = prefix + String("manifest ");
-        write_manifest_to_string(map, metadata_manf);
-    }
-
-    for (uint32_t i = 0; i < orig_num_entries; i++) {
-        AiArraySetStr(combined_md, i, AiArrayGetStr(orig_md, i));
-    }
-    AiArraySetStr(combined_md, orig_num_entries + 0, metadata_manf.c_str());
-    AiArraySetStr(combined_md, orig_num_entries + 1, metadata_hash.c_str());
-    AiArraySetStr(combined_md, orig_num_entries + 2, metadata_conv.c_str());
-    AiArraySetStr(combined_md, orig_num_entries + 3, metadata_name.c_str());
-
-    AiNodeSetArray(driver, "custom_attributes", combined_md);
-}
-
-inline bool metadata_needed(AtNode* driver, const AtString aov_name) {
-    String flag = String(CRYPTOMATTE_METADATA_SET_FLAG) + aov_name.c_str();
-    return check_driver(driver) && !AiNodeLookUpUserParameter(driver, flag.c_str());
-}
-
-inline void metadata_set_unneeded(AtNode* driver, const AtString aov_name) {
-    if (!driver)
-        return;
-    String flag = String(CRYPTOMATTE_METADATA_SET_FLAG) + aov_name.c_str();
-    if (!AiNodeLookUpUserParameter(driver, flag.c_str()))
-        AiNodeDeclare(driver, flag.c_str(), "constant BOOL");
-}
-
 inline void add_hash_to_map(const char* c_str, ManifestMap& md_map) {
     if (cstr_empty(c_str))
         return;
@@ -1404,16 +1339,6 @@ private:
         AiNodeIteratorDestroy(shape_iterator);
     }
 
-    bool metadata_needed_on_drivers(const std::vector<AtNode*>& drivers, const AtString aov_name) {
-        for (auto& driver : drivers) {
-            if (metadata_needed(driver, aov_name)) {
-                metadata_set_unneeded(driver, aov_name);
-                return true;
-            }
-        }
-        return false;
-    }
-
     void build_standard_metadata(const std::vector<AtNode*>& driver_asset,
                                  const std::vector<AtNode*>& driver_object,
                                  const std::vector<AtNode*>& driver_material) {
@@ -1519,6 +1444,75 @@ private:
                   float(clock() - metadata_start_time) / CLOCKS_PER_SEC);
     }
 
+    void write_metadata_to_driver(AtNode* driver, const AtString cryptomatte_name,
+                                  const ManifestMap& map, const String sidecar_manif_file) const {
+        if (!check_driver(driver))
+            return;
+
+        AtArray* orig_md = AiNodeGetArray(driver, "custom_attributes");
+        const uint32_t orig_num_entries = orig_md ? AiArrayGetNumElements(orig_md) : 0;
+
+        char metadata_id_buffer[8];
+        compute_metadata_ID(metadata_id_buffer, cryptomatte_name);
+        const String prefix = String("STRING cryptomatte/") + metadata_id_buffer + "/";
+
+        for (uint32_t i = 0; i < orig_num_entries; i++) {
+            if (prefix.compare(AiArrayGetStr(orig_md, i)) == 0) {
+                AiMsgWarning("Cryptomatte: Unable to write metadata. EXR metadata "
+                             "key, %s, already in use.",
+                             prefix.c_str());
+                return;
+            }
+        }
+
+        const String metadata_hash = prefix + String("hash MurmurHash3_32");
+        const String metadata_conv = prefix + String("conversion uint32_to_float32");
+        const String metadata_name = prefix + String("name ") + cryptomatte_name.c_str();
+        String metadata_manf;
+        if (sidecar_manif_file.empty()) {
+            metadata_manf = prefix + String("manifest ");
+            write_manifest_to_string(map, metadata_manf);
+        } else {
+            metadata_manf = prefix + String("manif_file ") + sidecar_manif_file;
+        }
+
+        AtArray* combined_md = AiArrayAllocate(orig_num_entries + 4, 1, AI_TYPE_STRING);
+        for (uint32_t i = 0; i < orig_num_entries; i++)
+            AiArraySetStr(combined_md, i, AiArrayGetStr(orig_md, i));
+        AiArraySetStr(combined_md, orig_num_entries + 0, metadata_manf.c_str());
+        AiArraySetStr(combined_md, orig_num_entries + 1, metadata_hash.c_str());
+        AiArraySetStr(combined_md, orig_num_entries + 2, metadata_conv.c_str());
+        AiArraySetStr(combined_md, orig_num_entries + 3, metadata_name.c_str());
+
+        AiNodeSetArray(driver, "custom_attributes", combined_md);
+    }
+
+    bool check_driver(AtNode* driver) const {
+        return driver && AiNodeIs(driver, AtString("driver_exr"));
+    }
+
+    bool metadata_needed_on_drivers(const std::vector<AtNode*>& drivers, const AtString aov_name) {
+        for (auto& driver : drivers) {
+            if (metadata_needed(driver, aov_name)) {
+                metadata_set_unneeded(driver, aov_name);
+                return true;
+            }
+        }
+        return false;
+    }
+
+    bool metadata_needed(AtNode* driver, const AtString aov_name) const {
+        String flag = String(CRYPTOMATTE_METADATA_SET_FLAG) + aov_name.c_str();
+        return check_driver(driver) && !AiNodeLookUpUserParameter(driver, flag.c_str());
+    }
+
+    void metadata_set_unneeded(AtNode* driver, const AtString aov_name) const {
+        if (!driver)
+            return;
+        String flag = String(CRYPTOMATTE_METADATA_SET_FLAG) + aov_name.c_str();
+        if (!AiNodeLookUpUserParameter(driver, flag.c_str()))
+            AiNodeDeclare(driver, flag.c_str(), "constant BOOL");
+    }
     ///////////////////////////////////////////////
     //      Cleanup
     ///////////////////////////////////////////////
