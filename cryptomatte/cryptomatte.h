@@ -1071,7 +1071,7 @@ private:
             }
 
             if (crypto_aovs && check_driver(driver)) {
-                create_AOV_array(t_output, crypto_aovs, outputs_new);
+                setup_new_outputs(t_output, crypto_aovs, outputs_new);
 
                 if (AiNodeGetBool(driver, "half_precision")) {
                     AiNodeSetBool(driver, "half_precision", false);
@@ -1113,7 +1113,7 @@ private:
         build_user_metadata(tmp_uc_drivers);
     }
 
-    void create_AOV_array(TokenizedOutput& t_output, AtArray* crypto_aovs,
+    void setup_new_outputs(TokenizedOutput& t_output, AtArray* crypto_aovs,
                           std::vector<TokenizedOutput>& new_outputs) const {
         // Populates crypto_aovs and new_outputs
         AtNode* orig_filter = AiNodeLookUpByName(t_output.filter_tok.c_str());
@@ -1211,6 +1211,7 @@ private:
         AiNodeSetLocalData(manifest_driver, this);
         return manifest_driver;
     }
+    
     ///////////////////////////////////////////////
     //      Manifests and metadata
     ///////////////////////////////////////////////
