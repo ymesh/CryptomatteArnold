@@ -1037,26 +1037,19 @@ private:
     //      Building Cryptomatte Arnold Nodes
     ///////////////////////////////////////////////
 
-    void setup_cryptomatte_nodes() {
-        AtNode* render_options = AiUniverseGetOptions();
-        const AtArray* outputs = AiNodeGetArray(render_options, "outputs");
-        const uint32_t prev_output_num = AiArrayGetNumElements(outputs);
+    class TokenizedOutput {
+    public:
+        string camera_tok = "";
+        string aov_name_tok = "";
+        string aov_type_tok = "";
+        string filter_tok = "";
+        string driver_tok = "";
+        bool half_tok_present = false;
+        AtNode* driver = nullptr;
 
-        // if a driver is set to half, it needs to be set to full,
-        // and its non-cryptomatte outputs need to be set to half.
-        std::unordered_set<AtNode*> half_modified_drivers;
-        std::vector<bool> outputs_flagged_half(prev_output_num);
-        std::vector<AtNode*> outputs_drivers(prev_output_num);
-        StringVector outputs_orig(prev_output_num);
+        TokenizedOutput() {}
 
-        std::vector<AtNode*> driver_asset, driver_object, driver_material;
-        std::vector<std::vector<AtNode*>> tmp_uc_drivers(user_cryptomattes.count);
-        StringVector outputs_new;
-
-        for (uint32_t i = 0; i < prev_output_num; i++) {
-            size_t output_string_chars = AiArrayGetStr(outputs, i).length();
-            const AtString output_string = AiArrayGetStr(outputs, i);
-
+        TokenizedOutput(AtString output_string) {
             char* temp_string = strdup(output_string.c_str());
             const string c0 = to_string_safe(strtok(temp_string, " "));
             const string c1 = to_string_safe(strtok(nullptr, " "));
@@ -1067,57 +1060,102 @@ private:
             free(temp_string);
 
             const bool no_camera = c4.empty() || c4 == string("HALF");
-            const bool half_tok_present = (no_camera ? c4 : c5) == string("HALF");
+            
+            half_tok_present = (no_camera ? c4 : c5) == string("HALF");
 
-            const string camera_tok = no_camera ? "" : c0;
-            const string aov_name_tok = no_camera ? c0 : c1;
-            const string aov_type_tok = no_camera ? c1 : c2;
-            const string filter_tok = no_camera ? c2 : c3;
-            const string driver_tok = no_camera ? c3 : c4;
+            camera_tok = no_camera ? "" : c0;
+            aov_name_tok = no_camera ? c0 : c1;
+            aov_type_tok = no_camera ? c1 : c2;
+            filter_tok = no_camera ? c2 : c3;
+            driver_tok = no_camera ? c3 : c4;
 
-            AtNode* driver = AiNodeLookUpByName(driver_tok.c_str());
+            driver = AiNodeLookUpByName(driver_tok.c_str());
+        }
+
+        string rebuild_output() const {
+            // disable the exr preview channels by replacing the filter with a noop
+            string output_str("");
+            if (!camera_tok.empty()) {
+                output_str.append(camera_tok);
+                output_str.append(" ");
+            }
+            output_str.append(aov_name_tok);
+            output_str.append(" ");
+            output_str.append(aov_type_tok);
+            output_str.append(" ");
+            output_str.append(filter_tok);
+            output_str.append(" ");
+            output_str.append(driver_tok);
+            if (half_tok_present) // output was already flagged half
+                output_str.append(" HALF");
+            return output_str;
+        }
+
+        bool aov_matches(const char* str) const {
+            return aov_name_tok == string(str);
+        }
+    private:
+        string to_string_safe(const char* c_str) const {
+            // returns empty string if c_str is null
+            return c_str ? c_str : "";
+        }
+
+
+    };
+
+    void setup_cryptomatte_nodes() {
+        AtNode* render_options = AiUniverseGetOptions();
+        const AtArray* outputs = AiNodeGetArray(render_options, "outputs");
+        const uint32_t prev_output_num = AiArrayGetNumElements(outputs);
+
+        // if a driver is set to half, it needs to be set to full,
+        // and its non-cryptomatte outputs need to be set to half.
+        std::unordered_set<AtNode*> half_modified_drivers;
+        std::vector<TokenizedOutput> orig_t_outputs(prev_output_num);
+        std::vector<AtNode*> driver_asset, driver_object, driver_material;
+        std::vector<std::vector<AtNode*>> tmp_uc_drivers(user_cryptomattes.count);
+        StringVector outputs_new;
+
+        for (uint32_t i = 0; i < prev_output_num; i++) {
+            TokenizedOutput t_output(AiArrayGetStr(outputs, i));
 
             AtArray* crypto_aovs = nullptr;
-            if (aov_name_tok == string(aov_cryptoasset)) {
+            if (t_output.aov_matches(aov_cryptoasset)) {
                 crypto_aovs = aov_array_cryptoasset = allocate_aov_names();
-                driver_asset.push_back(driver);
-            } else if (aov_name_tok == string(aov_cryptoobject)) {
+                driver_asset.push_back(t_output.driver);
+            } else if (t_output.aov_matches(aov_cryptoobject)) {
                 crypto_aovs = aov_array_cryptoobject = allocate_aov_names();
-                driver_object.push_back(driver);
-            } else if (aov_name_tok == string(aov_cryptomaterial)) {
+                driver_object.push_back(t_output.driver);
+            } else if (t_output.aov_matches(aov_cryptomaterial)) {
                 crypto_aovs = aov_array_cryptomaterial = allocate_aov_names();
-                driver_material.push_back(driver);
+                driver_material.push_back(t_output.driver);
             } else {
                 for (size_t j = 0; j < user_cryptomattes.count; j++) {
                     const char* user_aov_name = user_cryptomattes.aovs[j].c_str();
-                    if (aov_name_tok == string(user_aov_name)) {
+                    if (t_output.aov_matches(user_aov_name)) {
                         crypto_aovs = user_cryptomattes.aov_arrays[j] = allocate_aov_names();
-                        tmp_uc_drivers[j].push_back(driver);
+                        tmp_uc_drivers[j].push_back(t_output.driver);
                         break;
                     }
                 }
             }
 
-            string updated_output = output_string.c_str();
-            if (crypto_aovs && check_driver(driver)) {
-                create_AOV_array(aov_name_tok, filter_tok, camera_tok, driver, crypto_aovs,
-                                 outputs_new);
-                if (AiNodeGetBool(driver, "half_precision")) {
-                    AiNodeSetBool(driver, "half_precision", false);
-                    half_modified_drivers.insert(driver);
+            if (crypto_aovs && check_driver(t_output.driver)) {
+                create_AOV_array(t_output, crypto_aovs, outputs_new);
+                if (AiNodeGetBool(t_output.driver, "half_precision")) {
+                    AiNodeSetBool(t_output.driver, "half_precision", false);
+                    half_modified_drivers.insert(t_output.driver);
                 }
                 if (!option_exr_preview_channels)
-                    updated_output = noop_output_str(camera_tok, aov_name_tok, aov_type_tok, driver,
-                                                     half_tok_present);
+                    t_output.filter_tok = AiNodeGetName(get_or_create_noop_filter());
             }
 
-            outputs_orig[i] = updated_output;
-            outputs_flagged_half[i] = half_tok_present;
-            outputs_drivers[i] = driver;
+            orig_t_outputs[i] = t_output;
         }
 
         if (outputs_new.size()) {
             if (option_sidecar_manifests) {
+                // make function? 
                 AtString manifest_driver_name("cryptomatte_manifest_driver");
                 AtNode* manifest_driver = AiNodeLookUpByName(manifest_driver_name);
                 if (!manifest_driver) {
@@ -1128,22 +1166,23 @@ private:
                 outputs_new.push_back(manifest_driver_name.c_str());
             }
 
-            const uint32_t nb_outputs = uint32_t(outputs_orig.size() + outputs_new.size());
+            const uint32_t nb_outputs = uint32_t(orig_t_outputs.size() + outputs_new.size());
             AtArray* final_outputs = AiArrayAllocate(nb_outputs, 1, AI_TYPE_STRING);
 
             // Add old outputs (with "HALF" appended where appropriate)
-            for (int i = 0; i < outputs_orig.size(); i++) {
+            for (int i = 0; i < orig_t_outputs.size(); i++) {
                 // if outputs are not flagged as half, and their drivers are modified
                 // the output must also be modified.
-                auto output = outputs_orig[i];
-                if (!outputs_flagged_half[i] && half_modified_drivers.count(outputs_drivers[i]))
-                    output = string(output) + " HALF";
-                outputs_orig[i] = output;
+                if (!orig_t_outputs[i].half_tok_present &&
+                    half_modified_drivers.count(orig_t_outputs[i].driver)) {
+                    orig_t_outputs[i].half_tok_present = true;
+                }
             }
 
             // Rebuild AtArray of outputs
-            for (int i = 0; i < outputs_orig.size(); i++)
-                AiArraySetStr(final_outputs, uint32_t(i), outputs_orig[i].c_str());
+            for (int i = 0; i < orig_t_outputs.size(); i++)
+                AiArraySetStr(final_outputs, uint32_t(i),
+                              orig_t_outputs[i].rebuild_output().c_str());
             for (int i = 0; i < outputs_new.size(); i++)
                 AiArraySetStr(final_outputs, uint32_t(i + prev_output_num), outputs_new[i].c_str());
 
@@ -1162,34 +1201,6 @@ private:
             AiNodeSetBool(filter, "noop", true);
         }
         return filter;
-    }
-
-    string noop_output_str(const string& camera_tok, const string& aov_name_tok,
-                           const string& aov_type_tok, const AtNode* driver,
-                           const bool half_tok_present) const {
-        // disable the exr preview channels by replacing the filter with a noop
-        AtNode* noop_filter = option_exr_preview_channels ? nullptr : get_or_create_noop_filter();
-
-        string output_str("");
-        if (!camera_tok.empty()) {
-            output_str.append(camera_tok);
-            output_str.append(" ");
-        }
-        output_str.append(aov_name_tok);
-        output_str.append(" ");
-        output_str.append(aov_type_tok);
-        output_str.append(" ");
-        output_str.append(AiNodeGetName(noop_filter));
-        output_str.append(" ");
-        output_str.append(AiNodeGetName(driver));
-        if (half_tok_present) // output was already flagged half
-            output_str.append(" HALF");
-        return output_str;
-    }
-
-    string to_string_safe(const char* c_str) const {
-        // returns empty string if c_str is null
-        return c_str ? c_str : "";
     }
 
     AtArray* allocate_aov_names() const {
@@ -1450,17 +1461,16 @@ private:
                   float(clock() - metadata_start_time) / CLOCKS_PER_SEC);
     }
 
-    void create_AOV_array(const string& aov_name, const string& filter_name,
-                          const string& camera_name, AtNode* driver, AtArray* crypto_aovs,
+    void create_AOV_array(TokenizedOutput& t_output, AtArray* crypto_aovs,
                           StringVector& new_ouputs) const {
         // Populates crypto_aovs and new_outputs
 
-        AtNode* orig_filter = AiNodeLookUpByName(filter_name.c_str());
+        AtNode* orig_filter = AiNodeLookUpByName(t_output.filter_tok.c_str());
 
         // Outlaw RLE, dwaa, dwab
         const AtEnum compressions =
-            AiParamGetEnum(AiNodeEntryLookUpParameter(AiNodeGetNodeEntry(driver), "compression"));
-        const int compression = AiNodeGetInt(driver, "compression");
+            AiParamGetEnum(AiNodeEntryLookUpParameter(AiNodeGetNodeEntry(t_output.driver), "compression"));
+        const int compression = AiNodeGetInt(t_output.driver, "compression");
         const bool cmp_rle = compression == AiEnumGetValue(compressions, "rle"),
                    cmp_dwa = compression == AiEnumGetValue(compressions, "dwaa") ||
                              compression == AiEnumGetValue(compressions, "dwab");
@@ -1471,11 +1481,11 @@ private:
             if (cmp_dwa)
                 AiMsgWarning("Cryptomatte cannot be set to dwa compression- the "
                              "compression breaks Cryptomattes. Switching to Zip.");
-            AiNodeSetStr(driver, "compression", "zip");
+            AiNodeSetStr(t_output.driver, "compression", "zip");
         }
 
         // ensure AI_AOV_BLEND_OPACITY is enabled
-        AiAOVRegister(aov_name.c_str(), AI_TYPE_RGB, AI_AOV_BLEND_OPACITY);
+        AiAOVRegister(t_output.aov_name_tok.c_str(), AI_TYPE_RGB, AI_AOV_BLEND_OPACITY);
 
         AtArray* outputs = AiNodeGetArray(AiUniverseGetOptions(), "outputs");
 
@@ -1488,22 +1498,22 @@ private:
             char rank_num[3];
             sprintf(rank_num, "%002d", i);
 
-            const string filter_rank_name = aov_name + "_filter" + rank_num;
-            const string aov_rank_name = aov_name + rank_num;
+            const string filter_rank_name = t_output.aov_name_tok + "_filter" + rank_num;
+            const string aov_rank_name = t_output.aov_name_tok + rank_num;
 
             if (AiNodeLookUpByName(filter_rank_name.c_str()) == nullptr)
                 AtNode* filter = create_filter(orig_filter, filter_rank_name.c_str(), i);
 
             string new_output_str;
-            if (!camera_name.empty()) {
-                new_output_str.append(camera_name);
+            if (!t_output.camera_tok.empty()) {
+                new_output_str.append(t_output.camera_tok);
                 new_output_str.append(" ");
             }
             new_output_str.append(aov_rank_name);
             new_output_str.append(" FLOAT ");
             new_output_str.append(filter_rank_name);
             new_output_str.append(" ");
-            new_output_str.append(AiNodeGetName(driver));
+            new_output_str.append(AiNodeGetName(t_output.driver));
 
             if (!output_set.count(new_output_str)) {
                 AiAOVRegister(aov_rank_name.c_str(), AI_TYPE_FLOAT, AI_AOV_BLEND_NONE);
