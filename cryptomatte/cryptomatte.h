@@ -944,11 +944,11 @@ private:
         hash_object_rgb(sg, nsp_hash_clr, obj_hash_clr, mat_hash_clr);
 
         if (aov_array_cryptoasset)
-            write_array_of_AOVs(sg, aov_array_cryptoasset, nsp_hash_clr.r);
+            aov_array_set_flt(sg, aov_array_cryptoasset, nsp_hash_clr.r);
         if (aov_array_cryptoobject)
-            write_array_of_AOVs(sg, aov_array_cryptoobject, obj_hash_clr.r);
+            aov_array_set_flt(sg, aov_array_cryptoobject, obj_hash_clr.r);
         if (aov_array_cryptomaterial)
-            write_array_of_AOVs(sg, aov_array_cryptomaterial, mat_hash_clr.r);
+            aov_array_set_flt(sg, aov_array_cryptomaterial, mat_hash_clr.r);
 
         nsp_hash_clr.r = obj_hash_clr.r = mat_hash_clr.r = 0.0f;
 
@@ -970,7 +970,7 @@ private:
                 if (!result.empty())
                     hash = hash_name_rgb(result.c_str());
 
-                write_array_of_AOVs(sg, aovArray, hash.r);
+                aov_array_set_flt(sg, aovArray, hash.r);
                 hash.r = 0.0f;
                 AiAOVSetRGBA(sg, aov_name, hash);
             }
@@ -1017,6 +1017,15 @@ private:
                 CRYPTOMATTE_CACHE[sg->tid].shader_object = sg->Op;
                 CRYPTOMATTE_CACHE[sg->tid].mat_hash_clr = mat_hash_clr;
             }
+        }
+    }
+
+    void aov_array_set_flt(AtShaderGlobals* sg, const AtArray* aov_names, float id) const {
+        for (uint32_t i = 0; i < AiArrayGetNumElements(aov_names); i++) {
+            const AtString aov_name = AiArrayGetStr(aov_names, i);
+            if (aov_name.empty())
+                return;
+            AiAOVSetFlt(sg, aov_name, id);
         }
     }
 
@@ -1255,15 +1264,6 @@ private:
         for (uint32_t i = 0; i < option_aov_depth; i++)
             AiArraySetStr(aovs, i, "");
         return aovs;
-    }
-
-    void write_array_of_AOVs(AtShaderGlobals* sg, const AtArray* names, float id) const {
-        for (uint32_t i = 0; i < AiArrayGetNumElements(names); i++) {
-            AtString aovName = AiArrayGetStr(names, i);
-            if (aovName.empty())
-                return;
-            AiAOVSetFlt(sg, aovName, id);
-        }
     }
 
     AtNode* setup_manifest_driver() {
