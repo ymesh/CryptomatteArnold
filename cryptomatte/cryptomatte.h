@@ -1205,7 +1205,7 @@ private:
             const String aov_rank_name = t_output.aov_name_tok + rank_num;
 
             if (AiNodeLookUpByName(filter_rank_name.c_str()) == nullptr)
-                AtNode* filter = create_filter(orig_filter, filter_rank_name.c_str(), i);
+                AtNode* filter = create_filter(orig_filter, filter_rank_name, i);
 
             TokenizedOutput new_t_output = t_output;
             new_t_output.aov_name_tok = aov_rank_name;
@@ -1223,6 +1223,20 @@ private:
             AiArraySetStr(crypto_aovs, i, aov_rank_name.c_str());
         }
     }
+
+    AtNode* create_filter(const AtNode* orig_filter, const String filter_name, int aovindex) const {
+        const AtNodeEntry* filter_nentry = AiNodeGetNodeEntry(orig_filter);
+        const auto width = AiNodeEntryLookUpParameter(filter_nentry, "width")
+                               ? AiNodeGetFlt(orig_filter, "width")
+                               : 2.0f;
+        const String filter_type = AiNodeEntryGetName(filter_nentry);
+        const String filter_param = filter_type.substr(0, filter_type.find("_filter"));
+
+        AtNode* filter = AiNode("cryptomatte_filter", filter_name.c_str(), nullptr);
+        AiNodeSetStr(filter, "filter", filter_param.c_str());
+        AiNodeSetInt(filter, "rank", aovindex * 2);
+        AiNodeSetFlt(filter, "width", width);
+        return filter;
     }
 
     AtNode* get_or_create_noop_filter() const {
@@ -1503,29 +1517,6 @@ private:
         }
         AiMsgInfo("User Cryptomatte manifests created - %f seconds",
                   float(clock() - metadata_start_time) / CLOCKS_PER_SEC);
-    }
-
-
-    AtNode* create_filter(const AtNode* orig_filter, const char* filter_rank_name,
-                          int aovindex) const {
-        float aFilter_width = 2.0;
-        const AtNodeEntry* orig_filter_nentry = AiNodeGetNodeEntry(orig_filter);
-        const char* orig_filter_type_name = AiNodeEntryGetName(orig_filter_nentry);
-        if (AiNodeEntryLookUpParameter(orig_filter_nentry, "width"))
-            aFilter_width = AiNodeGetFlt(orig_filter, "width");
-
-        char aFilter_filter[MAX_STRING_LENGTH];
-        safe_copy_to_buffer(aFilter_filter, orig_filter_type_name);
-        char* filter_strip_point = strstr(aFilter_filter, "_filter");
-        if (filter_strip_point)
-            filter_strip_point[0] = '\0';
-
-        AtNode* filter = AiNode("cryptomatte_filter");
-        AiNodeSetStr(filter, "filter", aFilter_filter);
-        AiNodeSetInt(filter, "rank", aovindex * 2);
-        AiNodeSetFlt(filter, "width", aFilter_width);
-        AiNodeSetStr(filter, "name", filter_rank_name);
-        return filter;
     }
 
     ///////////////////////////////////////////////
