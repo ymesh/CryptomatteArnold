@@ -1046,8 +1046,11 @@ private:
         string driver_tok = "";
         bool half_tok_present = false;
         AtNode* driver = nullptr;
+        AtNode* raw_driver = nullptr;
 
         TokenizedOutput() {}
+
+        TokenizedOutput(AtNode* raw_driver_in) { raw_driver = raw_driver_in; }
 
         TokenizedOutput(AtString output_string) {
             char* temp_string = strdup(output_string.c_str());
@@ -1060,7 +1063,7 @@ private:
             free(temp_string);
 
             const bool no_camera = c4.empty() || c4 == string("HALF");
-            
+
             half_tok_present = (no_camera ? c4 : c5) == string("HALF");
 
             camera_tok = no_camera ? "" : c0;
@@ -1073,7 +1076,9 @@ private:
         }
 
         string rebuild_output() const {
-            // disable the exr preview channels by replacing the filter with a noop
+            if (raw_driver)
+                return string(AiNodeGetName(raw_driver));
+
             string output_str("");
             if (!camera_tok.empty()) {
                 output_str.append(camera_tok);
@@ -1091,16 +1096,10 @@ private:
             return output_str;
         }
 
-        bool aov_matches(const char* str) const {
-            return aov_name_tok == string(str);
-        }
+        bool aov_matches(const char* str) const { return aov_name_tok == string(str); }
+
     private:
-        string to_string_safe(const char* c_str) const {
-            // returns empty string if c_str is null
-            return c_str ? c_str : "";
-        }
-
-
+        string to_string_safe(const char* c_str) const { return c_str ? c_str : ""; }
     };
 
     void setup_cryptomatte_nodes() {
@@ -1114,7 +1113,8 @@ private:
         std::vector<TokenizedOutput> orig_t_outputs(prev_output_num);
         std::vector<AtNode*> driver_asset, driver_object, driver_material;
         std::vector<std::vector<AtNode*>> tmp_uc_drivers(user_cryptomattes.count);
-        StringVector outputs_new;
+
+        std::vector<TokenizedOutput> outputs_new;
 
         for (uint32_t i = 0; i < prev_output_num; i++) {
             TokenizedOutput t_output(AiArrayGetStr(outputs, i));
@@ -1142,6 +1142,7 @@ private:
 
             if (crypto_aovs && check_driver(t_output.driver)) {
                 create_AOV_array(t_output, crypto_aovs, outputs_new);
+
                 if (AiNodeGetBool(t_output.driver, "half_precision")) {
                     AiNodeSetBool(t_output.driver, "half_precision", false);
                     half_modified_drivers.insert(t_output.driver);
@@ -1155,7 +1156,6 @@ private:
 
         if (outputs_new.size()) {
             if (option_sidecar_manifests) {
-                // make function? 
                 AtString manifest_driver_name("cryptomatte_manifest_driver");
                 AtNode* manifest_driver = AiNodeLookUpByName(manifest_driver_name);
                 if (!manifest_driver) {
@@ -1163,7 +1163,7 @@ private:
                     AiNodeSetStr(manifest_driver, "name", manifest_driver_name);
                 }
                 AiNodeSetLocalData(manifest_driver, this);
-                outputs_new.push_back(manifest_driver_name.c_str());
+                outputs_new.push_back(TokenizedOutput(manifest_driver));
             }
 
             const uint32_t nb_outputs = uint32_t(orig_t_outputs.size() + outputs_new.size());
@@ -1184,7 +1184,8 @@ private:
                 AiArraySetStr(final_outputs, uint32_t(i),
                               orig_t_outputs[i].rebuild_output().c_str());
             for (int i = 0; i < outputs_new.size(); i++)
-                AiArraySetStr(final_outputs, uint32_t(i + prev_output_num), outputs_new[i].c_str());
+                AiArraySetStr(final_outputs, uint32_t(i + prev_output_num),
+                              outputs_new[i].rebuild_output().c_str());
 
             AiNodeSetArray(render_options, "outputs", final_outputs);
         }
@@ -1462,9 +1463,8 @@ private:
     }
 
     void create_AOV_array(TokenizedOutput& t_output, AtArray* crypto_aovs,
-                          StringVector& new_ouputs) const {
+                          std::vector<TokenizedOutput>& new_outputs) const {
         // Populates crypto_aovs and new_outputs
-
         AtNode* orig_filter = AiNodeLookUpByName(t_output.filter_tok.c_str());
 
         // Outlaw RLE, dwaa, dwab
@@ -1504,21 +1504,19 @@ private:
             if (AiNodeLookUpByName(filter_rank_name.c_str()) == nullptr)
                 AtNode* filter = create_filter(orig_filter, filter_rank_name.c_str(), i);
 
-            string new_output_str;
-            if (!t_output.camera_tok.empty()) {
-                new_output_str.append(t_output.camera_tok);
-                new_output_str.append(" ");
-            }
-            new_output_str.append(aov_rank_name);
-            new_output_str.append(" FLOAT ");
-            new_output_str.append(filter_rank_name);
-            new_output_str.append(" ");
-            new_output_str.append(AiNodeGetName(t_output.driver));
+            TokenizedOutput new_t_output = t_output;
+            new_t_output.aov_name_tok = aov_rank_name;
+            new_t_output.aov_type_tok = "FLOAT";
+            new_t_output.filter_tok = filter_rank_name;
+            new_t_output.half_tok_present = false;
 
+            string new_output_str = new_t_output.rebuild_output();
             if (!output_set.count(new_output_str)) {
                 AiAOVRegister(aov_rank_name.c_str(), AI_TYPE_FLOAT, AI_AOV_BLEND_NONE);
-                new_ouputs.push_back(new_output_str.c_str());
+                new_outputs.push_back(new_t_output);
+                output_set.insert(new_output_str);
             }
+
             AiArraySetStr(crypto_aovs, i, aov_rank_name.c_str());
         }
     }
