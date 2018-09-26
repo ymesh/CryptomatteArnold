@@ -1039,7 +1039,7 @@ private:
     //      Building Cryptomatte Arnold Nodes
     ///////////////////////////////////////////////
 
-    class TokenizedOutput {
+    struct TokenizedOutput {
     public:
         String camera_tok = "";
         String aov_name_tok = "";
