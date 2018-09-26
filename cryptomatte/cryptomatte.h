@@ -576,16 +576,6 @@ inline bool get_material_name(const AtShaderGlobals* sg, const AtNode* node, con
 //
 ///////////////////////////////////////////////
 
-inline void compute_metadata_ID(char id_buffer[8], AtString cryptomatte_name) {
-    AtRGB color_hash = hash_name_rgb(cryptomatte_name.c_str());
-    uint32_t float_bits;
-    std::memcpy(&float_bits, &color_hash.r, 4);
-    char hex_chars[9];
-    sprintf(hex_chars, "%08x", float_bits);
-    strncpy(id_buffer, hex_chars, 7);
-    id_buffer[7] = '\0';
-}
-
 inline void write_manifest_to_string(const ManifestMap& map, String& manf_string) {
     ManifestMap::const_iterator map_it = map.begin();
     const size_t map_entries = map.size();
@@ -1452,9 +1442,8 @@ private:
         AtArray* orig_md = AiNodeGetArray(driver, "custom_attributes");
         const uint32_t orig_num_entries = orig_md ? AiArrayGetNumElements(orig_md) : 0;
 
-        char metadata_id_buffer[8];
-        compute_metadata_ID(metadata_id_buffer, cryptomatte_name);
-        const String prefix = String("STRING cryptomatte/") + metadata_id_buffer + "/";
+        const String metadata_id = compute_metadata_ID(cryptomatte_name);
+        const String prefix = String("STRING cryptomatte/") + metadata_id + "/";
 
         for (uint32_t i = 0; i < orig_num_entries; i++) {
             if (prefix.compare(AiArrayGetStr(orig_md, i)) == 0) {
@@ -1513,6 +1502,16 @@ private:
         if (!AiNodeLookUpUserParameter(driver, flag.c_str()))
             AiNodeDeclare(driver, flag.c_str(), "constant BOOL");
     }
+
+    String compute_metadata_ID(AtString cryptomatte_name) const {
+        const float float_id = hash_name_rgb(cryptomatte_name.c_str()).r;
+        uint32_t int_id;
+        std::memcpy(&int_id, &float_id, 4);
+        char hex_chars[9];
+        sprintf(hex_chars, "%08x", int_id);
+        return String(hex_chars).substr(0, 7);
+    }
+
     ///////////////////////////////////////////////
     //      Cleanup
     ///////////////////////////////////////////////
