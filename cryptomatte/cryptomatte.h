@@ -97,11 +97,11 @@ getting global
 
 #define NOMINMAX // lets you keep using std::min on windows
 
-using string = std::string;
+using String = std::string;
 
-using ManifestMap = std::map<string, float>;
+using ManifestMap = std::map<String, float>;
 
-using StringVector = std::vector<string>;
+using StringVector = std::vector<String>;
 
 ///////////////////////////////////////////////
 //
@@ -586,7 +586,7 @@ inline void compute_metadata_ID(char id_buffer[8], AtString cryptomatte_name) {
     id_buffer[7] = '\0';
 }
 
-inline void write_manifest_to_string(const ManifestMap& map, string& manf_string) {
+inline void write_manifest_to_string(const ManifestMap& map, String& manf_string) {
     ManifestMap::const_iterator map_it = map.begin();
     const size_t map_entries = map.size();
     const size_t max_entries = 100000;
@@ -598,10 +598,10 @@ inline void write_manifest_to_string(const ManifestMap& map, string& manf_string
     }
 
     manf_string.append("{");
-    string pair;
+    String pair;
     pair.reserve(MAX_STRING_LENGTH);
     for (uint32_t i = 0; i < metadata_entries; i++) {
-        string name = map_it->first;
+        String name = map_it->first;
         float hash_value = map_it->second;
         ++map_it;
 
@@ -631,7 +631,7 @@ inline void write_manifest_to_string(const ManifestMap& map, string& manf_string
 
 inline void write_manifest_sidecar_file(const ManifestMap& map_md_asset,
                                         StringVector manifest_paths) {
-    string encoded_manifest = "";
+    String encoded_manifest = "";
     write_manifest_to_string(map_md_asset, encoded_manifest);
     for (const auto& manifest_path : manifest_paths) {
         std::ofstream out(manifest_path.c_str());
@@ -646,22 +646,22 @@ inline bool check_driver(AtNode* driver) {
 }
 
 inline void write_metadata_to_driver(AtNode* driver, AtString cryptomatte_name,
-                                     const ManifestMap& map, string sidecar_manif_file) {
+                                     const ManifestMap& map, String sidecar_manif_file) {
     if (!check_driver(driver))
         return;
 
     AtArray* orig_md = AiNodeGetArray(driver, "custom_attributes");
     const uint32_t orig_num_entries = orig_md ? AiArrayGetNumElements(orig_md) : 0;
 
-    string metadata_hash, metadata_conv, metadata_name,
+    String metadata_hash, metadata_conv, metadata_name,
         metadata_manf; // the new entries
     AtArray* combined_md =
         AiArrayAllocate(orig_num_entries + 4, 1, AI_TYPE_STRING); // Does not need destruction
 
-    string prefix("STRING cryptomatte/");
+    String prefix("STRING cryptomatte/");
     char metadata_id_buffer[8];
     compute_metadata_ID(metadata_id_buffer, cryptomatte_name);
-    prefix += string(metadata_id_buffer) + string("/");
+    prefix += String(metadata_id_buffer) + String("/");
 
     for (uint32_t i = 0; i < orig_num_entries; i++) {
         if (prefix.compare(AiArrayGetStr(orig_md, i)) == 0) {
@@ -672,13 +672,13 @@ inline void write_metadata_to_driver(AtNode* driver, AtString cryptomatte_name,
         }
     }
 
-    metadata_hash = prefix + string("hash MurmurHash3_32");
-    metadata_conv = prefix + string("conversion uint32_to_float32");
-    metadata_name = prefix + string("name ") + cryptomatte_name.c_str();
+    metadata_hash = prefix + String("hash MurmurHash3_32");
+    metadata_conv = prefix + String("conversion uint32_to_float32");
+    metadata_name = prefix + String("name ") + cryptomatte_name.c_str();
     if (sidecar_manif_file.length()) {
-        metadata_manf = prefix + string("manif_file ") + sidecar_manif_file;
+        metadata_manf = prefix + String("manif_file ") + sidecar_manif_file;
     } else {
-        metadata_manf = prefix + string("manifest ");
+        metadata_manf = prefix + String("manifest ");
         write_manifest_to_string(map, metadata_manf);
     }
 
@@ -694,14 +694,14 @@ inline void write_metadata_to_driver(AtNode* driver, AtString cryptomatte_name,
 }
 
 inline bool metadata_needed(AtNode* driver, const AtString aov_name) {
-    string flag = string(CRYPTOMATTE_METADATA_SET_FLAG) + aov_name.c_str();
+    String flag = String(CRYPTOMATTE_METADATA_SET_FLAG) + aov_name.c_str();
     return check_driver(driver) && !AiNodeLookUpUserParameter(driver, flag.c_str());
 }
 
 inline void metadata_set_unneeded(AtNode* driver, const AtString aov_name) {
     if (!driver)
         return;
-    string flag = string(CRYPTOMATTE_METADATA_SET_FLAG) + aov_name.c_str();
+    String flag = String(CRYPTOMATTE_METADATA_SET_FLAG) + aov_name.c_str();
     if (!AiNodeLookUpUserParameter(driver, flag.c_str()))
         AiNodeDeclare(driver, flag.c_str(), "constant BOOL");
 }
@@ -709,7 +709,7 @@ inline void metadata_set_unneeded(AtNode* driver, const AtString aov_name) {
 inline void add_hash_to_map(const char* c_str, ManifestMap& md_map) {
     if (cstr_empty(c_str))
         return;
-    string name_string = string(c_str);
+    String name_string = String(c_str);
     if (md_map.count(name_string) == 0) {
         AtRGB hash = hash_name_rgb(c_str);
         md_map[name_string] = hash.r;
@@ -1039,11 +1039,11 @@ private:
 
     class TokenizedOutput {
     public:
-        string camera_tok = "";
-        string aov_name_tok = "";
-        string aov_type_tok = "";
-        string filter_tok = "";
-        string driver_tok = "";
+        String camera_tok = "";
+        String aov_name_tok = "";
+        String aov_type_tok = "";
+        String filter_tok = "";
+        String driver_tok = "";
         bool half_flag = false;
         AtNode* driver = nullptr;
         AtNode* raw_driver = nullptr;
@@ -1054,17 +1054,17 @@ private:
 
         TokenizedOutput(AtString output_string) {
             char* temp_string = strdup(output_string.c_str());
-            const string c0 = to_string_safe(strtok(temp_string, " "));
-            const string c1 = to_string_safe(strtok(nullptr, " "));
-            const string c2 = to_string_safe(strtok(nullptr, " "));
-            const string c3 = to_string_safe(strtok(nullptr, " "));
-            const string c4 = to_string_safe(strtok(nullptr, " "));
-            const string c5 = to_string_safe(strtok(nullptr, " "));
+            const String c0 = to_string_safe(strtok(temp_string, " "));
+            const String c1 = to_string_safe(strtok(nullptr, " "));
+            const String c2 = to_string_safe(strtok(nullptr, " "));
+            const String c3 = to_string_safe(strtok(nullptr, " "));
+            const String c4 = to_string_safe(strtok(nullptr, " "));
+            const String c5 = to_string_safe(strtok(nullptr, " "));
             free(temp_string);
 
-            const bool no_camera = c4.empty() || c4 == string("HALF");
+            const bool no_camera = c4.empty() || c4 == String("HALF");
 
-            half_flag = (no_camera ? c4 : c5) == string("HALF");
+            half_flag = (no_camera ? c4 : c5) == String("HALF");
 
             camera_tok = no_camera ? "" : c0;
             aov_name_tok = no_camera ? c0 : c1;
@@ -1075,11 +1075,11 @@ private:
             driver = AiNodeLookUpByName(driver_tok.c_str());
         }
 
-        string rebuild_output() const {
+        String rebuild_output() const {
             if (raw_driver)
-                return string(AiNodeGetName(raw_driver));
+                return String(AiNodeGetName(raw_driver));
 
-            string output_str("");
+            String output_str("");
             if (!camera_tok.empty()) {
                 output_str.append(camera_tok);
                 output_str.append(" ");
@@ -1096,10 +1096,10 @@ private:
             return output_str;
         }
 
-        bool aov_matches(const char* str) const { return aov_name_tok == string(str); }
+        bool aov_matches(const char* str) const { return aov_name_tok == String(str); }
 
     private:
-        string to_string_safe(const char* c_str) const { return c_str ? c_str : ""; }
+        String to_string_safe(const char* c_str) const { return c_str ? c_str : ""; }
     };
 
     void setup_cryptomatte_nodes() {
@@ -1207,19 +1207,19 @@ private:
         return aovs;
     }
 
-    void setup_deferred_manifest(AtNode* driver, AtString token, string& path_out,
-                                 string& metadata_path_out) {
+    void setup_deferred_manifest(AtNode* driver, AtString token, String& path_out,
+                                 String& metadata_path_out) {
         path_out = "";
         metadata_path_out = "";
         if (check_driver(driver) && option_sidecar_manifests) {
-            string filepath = string(AiNodeGetStr(driver, "filename").c_str());
+            String filepath = String(AiNodeGetStr(driver, "filename").c_str());
             const size_t exr_found = filepath.find(".exr");
-            if (exr_found != string::npos)
+            if (exr_found != String::npos)
                 filepath = filepath.substr(0, exr_found);
 
             path_out = filepath + "." + token.c_str() + ".json";
             const size_t last_partition = path_out.find_last_of("/\\");
-            if (last_partition == string::npos)
+            if (last_partition == String::npos)
                 metadata_path_out += path_out;
             else
                 metadata_path_out += path_out.substr(last_partition + 1);
@@ -1361,7 +1361,7 @@ private:
             compile_standard_manifests(do_md_asset, do_md_object, do_md_material, map_md_asset,
                                        map_md_object, map_md_material);
 
-        string manif_asset_m, manif_object_m, manif_material_m;
+        String manif_asset_m, manif_object_m, manif_material_m;
         manif_asset_paths.resize(driver_asset.size());
         for (size_t i = 0; i < driver_asset.size(); i++) {
             setup_deferred_manifest(driver_asset[i], aov_cryptoasset, manif_asset_paths[i],
@@ -1416,9 +1416,9 @@ private:
                 do_metadata[i] = do_metadata[i] || metadata_needed(driver, user_aov);
                 do_anything = do_anything || do_metadata[i];
 
-                string manif_user_m;
+                String manif_user_m;
                 if (sidecar) {
-                    string manif_asset_paths;
+                    String manif_asset_paths;
                     setup_deferred_manifest(driver, user_aov, manif_asset_paths, manif_user_m);
                     manifs_user_paths[i].push_back(driver ? manif_asset_paths : "");
                 }
@@ -1475,17 +1475,17 @@ private:
 
         AtArray* outputs = AiNodeGetArray(AiUniverseGetOptions(), "outputs");
 
-        std::unordered_set<string> output_set;
+        std::unordered_set<String> output_set;
         for (uint32_t i = 0; i < AiArrayGetNumElements(outputs); i++)
-            output_set.insert(string(AiArrayGetStr(outputs, i)));
+            output_set.insert(String(AiArrayGetStr(outputs, i)));
 
         // Create filters and outputs as needed
         for (int i = 0; i < option_aov_depth; i++) {
             char rank_num[3];
             sprintf(rank_num, "%002d", i);
 
-            const string filter_rank_name = t_output.aov_name_tok + "_filter" + rank_num;
-            const string aov_rank_name = t_output.aov_name_tok + rank_num;
+            const String filter_rank_name = t_output.aov_name_tok + "_filter" + rank_num;
+            const String aov_rank_name = t_output.aov_name_tok + rank_num;
 
             if (AiNodeLookUpByName(filter_rank_name.c_str()) == nullptr)
                 AtNode* filter = create_filter(orig_filter, filter_rank_name.c_str(), i);
@@ -1496,7 +1496,7 @@ private:
             new_t_output.filter_tok = filter_rank_name;
             new_t_output.half_flag = false;
 
-            string new_output_str = new_t_output.rebuild_output();
+            String new_output_str = new_t_output.rebuild_output();
             if (!output_set.count(new_output_str)) {
                 AiAOVRegister(aov_rank_name.c_str(), AI_TYPE_FLOAT, AI_AOV_BLEND_NONE);
                 new_outputs.push_back(new_t_output);
