@@ -965,9 +965,12 @@ private:
         String filter_tok = "";
         String driver_tok = "";
         bool half_flag = false;
-        AtNode* driver = nullptr;
         AtNode* raw_driver = nullptr;
 
+    private:
+        AtNode* driver = nullptr;
+
+    public:
         TokenizedOutput() {}
 
         TokenizedOutput(AtNode* raw_driver_in) { raw_driver = raw_driver_in; }
@@ -1016,6 +1019,15 @@ private:
             return output_str;
         }
 
+        AtNode* get_driver() const {
+            if (driver && driver_tok == String(AiNodeGetName(driver)))
+                return driver;
+            else if (!driver_tok.empty())
+                return AiNodeLookUpByName(driver_tok.c_str());
+            else
+                return nullptr;
+        }
+
         bool aov_matches(const char* str) const { return aov_name_tok == String(str); }
 
         String to_string_safe(const char* c_str) const { return c_str ? c_str : ""; }
@@ -1036,33 +1048,34 @@ private:
 
         for (uint32_t i = 0; i < prev_output_num; i++) {
             TokenizedOutput t_output(AiArrayGetStr(outputs, i));
+            AtNode* driver = t_output.get_driver();
 
             AtArray* crypto_aovs = nullptr;
             if (t_output.aov_matches(aov_cryptoasset)) {
                 crypto_aovs = aov_array_cryptoasset = allocate_aov_names();
-                driver_asset.push_back(t_output.driver);
+                driver_asset.push_back(driver);
             } else if (t_output.aov_matches(aov_cryptoobject)) {
                 crypto_aovs = aov_array_cryptoobject = allocate_aov_names();
-                driver_object.push_back(t_output.driver);
+                driver_object.push_back(driver);
             } else if (t_output.aov_matches(aov_cryptomaterial)) {
                 crypto_aovs = aov_array_cryptomaterial = allocate_aov_names();
-                driver_material.push_back(t_output.driver);
+                driver_material.push_back(driver);
             } else {
                 for (size_t j = 0; j < user_cryptomattes.count; j++) {
                     if (t_output.aov_matches(user_cryptomattes.aovs[j])) {
                         crypto_aovs = user_cryptomattes.aov_arrays[j] = allocate_aov_names();
-                        tmp_uc_drivers[j].push_back(t_output.driver);
+                        tmp_uc_drivers[j].push_back(driver);
                         break;
                     }
                 }
             }
 
-            if (crypto_aovs && check_driver(t_output.driver)) {
+            if (crypto_aovs && check_driver(driver)) {
                 create_AOV_array(t_output, crypto_aovs, outputs_new);
 
-                if (AiNodeGetBool(t_output.driver, "half_precision")) {
-                    AiNodeSetBool(t_output.driver, "half_precision", false);
-                    modified_drivers.insert(t_output.driver);
+                if (AiNodeGetBool(driver, "half_precision")) {
+                    AiNodeSetBool(driver, "half_precision", false);
+                    modified_drivers.insert(driver);
                 }
                 if (noop_filter)
                     t_output.filter_tok = AiNodeGetName(noop_filter);
@@ -1080,7 +1093,7 @@ private:
             for (auto& t_output : outputs_orig) {
                 // if outputs are not flagged as half, and their drivers are switched
                 // to full float, the output must be set to half to preserve behavior.
-                if (!t_output.half_flag && modified_drivers.count(t_output.driver)) {
+                if (!t_output.half_flag && modified_drivers.count(t_output.get_driver())) {
                     t_output.half_flag = true;
                 }
             }
@@ -1106,9 +1119,10 @@ private:
         AtNode* orig_filter = AiNodeLookUpByName(t_output.filter_tok.c_str());
 
         // Outlaw RLE, dwaa, dwab
-        const AtEnum compressions = AiParamGetEnum(
-            AiNodeEntryLookUpParameter(AiNodeGetNodeEntry(t_output.driver), "compression"));
-        const int compression = AiNodeGetInt(t_output.driver, "compression");
+        AtNode* driver = t_output.get_driver();
+        const AtEnum compressions =
+            AiParamGetEnum(AiNodeEntryLookUpParameter(AiNodeGetNodeEntry(driver), "compression"));
+        const int compression = AiNodeGetInt(driver, "compression");
         const bool cmp_rle = compression == AiEnumGetValue(compressions, "rle"),
                    cmp_dwa = compression == AiEnumGetValue(compressions, "dwaa") ||
                              compression == AiEnumGetValue(compressions, "dwab");
@@ -1119,7 +1133,7 @@ private:
             if (cmp_dwa)
                 AiMsgWarning("Cryptomatte cannot be set to dwa compression- the "
                              "compression breaks Cryptomattes. Switching to Zip.");
-            AiNodeSetStr(t_output.driver, "compression", "zip");
+            AiNodeSetStr(driver, "compression", "zip");
         }
 
         AtArray* outputs = AiNodeGetArray(AiUniverseGetOptions(), "outputs");
