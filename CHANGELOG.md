@@ -1,6 +1,8 @@
 ### CryptomatteArnold 1.1 release notes: 
 
 * Preview AOVs are now always displayed in display drivers, even when preview_in_exr is disabled. 
+* Builds are supplied against Arnold 5.0.1.0 for Arnold 5.0.&ast and 5.1.&ast, and 5.2.0.0 for Arnold 5.2.&ast
+* Python tests now return error code for failed tests
 
 ### CryptomatteArnold 1.0 release notes: 
 
