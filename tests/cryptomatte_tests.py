@@ -358,11 +358,20 @@ class Cryptomatte000(CryptomatteTestBase):
             self.assertIn("Cryptomatte unit tests: Complete", log_contents,
                           "C++ unit test did not complete. ")
 
-    def test_build_against_correct_version(self):
+    def test_build_compatibility(self):
+        """ Tests that builds maximize compatibility with 
+        later versions of Arnold. Currently this means building with
+        5.0.1.0 for 5.0.* and 5.1.*, and building against 
+        5.2.0.0 for 5.2.*. 
+        """
+        legal_versions = ['5.0.1.0', '5.2.0.0']
+        legal_phrases = ['cryptomatte uses Arnold %s' % x for x in legal_versions]
         with open(self.result_log) as f:
             log_contents = f.read()
-            self.assertIn("cryptomatte uses Arnold 5.0.1.0", log_contents,
-                          "Cryptomatte not built against Arnold 5.0.1.0 (for maximum compatibility). ")
+            self.assertTrue(
+                any(x in log_contents for x in legal_phrases),
+                ("Cryptomatte not built against a "
+                 "compatibility-maximizing version (%s). ") % legal_versions)
 
     def test_non_cryptomatte_pixels(self):
         self.assertNonCryptomattePixelsMatch()
@@ -531,6 +540,12 @@ class CryptomatteSetup(unittest.TestCase):
 
         ai.AiNodeSetStr(self.my_driver, "filename", self.output_file_name)
         ai.AiNodeSetPtr(options, "aov_shaders", self.my_cryptomatte)
+
+        self.assertTrue(
+            self.my_cryptomatte, 
+            ("Cryptomatte node could not be created, plugin may not be "
+             "loaded in Python. (There may be binary compatibily issues "
+             "with Python). "))
 
     def tearDown(self):
         if os.path.exists(self.output_file_name):
