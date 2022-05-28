@@ -979,6 +979,7 @@ private:
         String aov_type_tok = "";
         String filter_tok = "";
         String driver_tok = "";
+        String layer_tok = "";
         bool half_flag = false;
         AtNode* raw_driver = nullptr;
         AtUniverse *universe = nullptr;
@@ -1000,17 +1001,25 @@ private:
             const String c3 = to_string_safe(strtok(nullptr, " "));
             const String c4 = to_string_safe(strtok(nullptr, " "));
             const String c5 = to_string_safe(strtok(nullptr, " "));
+            const String c6 = to_string_safe(strtok(nullptr, " "));
             free(temp_string);
 
-            const bool no_camera = c4.empty() || c4 == String("HALF");
+            // The first token c0 can eventually be a camera name. To ensure this, we look for such a node in the current universe
+            const AtNode *camNode = AiNodeLookUpByName(universe, AtString(c0.c_str()));
+            const bool has_camera = (camNode && AiNodeEntryGetType(AiNodeGetNodeEntry(camNode)) == AI_NODE_CAMERA);
+            camera_tok = has_camera ? c0 : "";
 
-            half_flag = (no_camera ? c4 : c5) == String("HALF");
-
-            camera_tok = no_camera ? "" : c0;
-            aov_name_tok = no_camera ? c0 : c1;
-            aov_type_tok = no_camera ? c1 : c2;
-            filter_tok = no_camera ? c2 : c3;
-            driver_tok = no_camera ? c3 : c4;
+            // the half flag is that last one in the outputs line, it can either be c4, c5, or c6
+            half_flag = ((c6 == String("HALF")) || 
+                        (c6.empty() && c5 == String("HALF")) ||
+                        (c5.empty() && c4 == String("HALF")));
+            
+            // Aov name, type, filter and driver, are mandatory tokens, that can eventually be preceded by the camera token
+            aov_name_tok = has_camera ? c1 : c0;
+            aov_type_tok = has_camera ? c2 : c1;
+            filter_tok = has_camera ? c3 : c2;
+            driver_tok = has_camera ? c4 : c3;
+            layer_tok = has_camera ? c5 : c4;
 
             driver = AiNodeLookUpByName(universe, driver_tok.c_str());
         }
@@ -1031,6 +1040,10 @@ private:
             output_str.append(filter_tok);
             output_str.append(" ");
             output_str.append(driver_tok);
+            if (!layer_tok.empty()) {
+                output_str.append(" ");
+                output_str.append(layer_tok);
+            }
             if (half_flag) // output was already flagged half
                 output_str.append(" HALF");
             return output_str;
@@ -1178,7 +1191,11 @@ private:
 
                 TokenizedOutput new_t_output = t_output;
                 new_t_output.aov_name_tok = aov_rank_name;
-                
+
+                // also append the rank to the eventual layer name
+                if (!new_t_output.layer_tok.empty())
+                    new_t_output.layer_tok += rank_num;
+
                 new_t_output.aov_type_tok = "FLOAT";
                 new_t_output.filter_tok = filter_rank_name;
                 new_t_output.half_flag = false;
