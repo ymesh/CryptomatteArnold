@@ -783,6 +783,12 @@ struct CryptomatteData {
     AtArray* aov_array_cryptoobject = nullptr;
     AtArray* aov_array_cryptomaterial = nullptr;
     UserCryptomattes user_cryptomattes;
+    // Custom output drivers need to be considered as if they 
+    // were a driver_exr
+    bool custom_output_driver = false;
+    // Do we want to create new outputs for the "depth" AOVs
+    // (e.g. crypto_material00, crypto_material01, etc...)
+    bool create_depth_outputs = true;
 
     // User options.
     uint8_t option_depth;
@@ -812,12 +818,17 @@ public:
 
     void setup_all(AtUniverse *universe, 
                    const AtString aov_cryptoasset_, const AtString aov_cryptoobject_,
-                   const AtString aov_cryptomaterial_, AtArray* uc_aov_array,
-                   AtArray* uc_src_array) {
+                   const AtString aov_cryptomaterial_, 
+                   AtArray* uc_aov_array,
+                   AtArray* uc_src_array,
+                   bool custom_output_driver_,
+                   bool create_depth_outputs_) {
         aov_cryptoasset = aov_cryptoasset_;
         aov_cryptoobject = aov_cryptoobject_;
         aov_cryptomaterial = aov_cryptomaterial_;
 
+        custom_output_driver = custom_output_driver_;
+        create_depth_outputs = create_depth_outputs_;
         destroy_arrays();
 
         user_cryptomattes = UserCryptomattes(uc_aov_array, uc_src_array);
@@ -1079,9 +1090,11 @@ private:
             if (crypto_aovs && check_driver(driver)) {
                 setup_new_outputs(universe, t_output, crypto_aovs, outputs_new);
 
-                if (AiNodeGetBool(driver, "half_precision")) {
-                    AiNodeSetBool(driver, "half_precision", false);
-                    modified_drivers.insert(driver);
+                if (AiNodeEntryLookUpParameter(AiNodeGetNodeEntry(driver), "half_precision")) {
+                    if (AiNodeGetBool(driver, "half_precision")) {
+                        AiNodeSetBool(driver, "half_precision", false);
+                        modified_drivers.insert(driver);
+                    }
                 }
                 if (noop_filter)
                     t_output.filter_tok = AiNodeGetName(noop_filter);
@@ -1126,20 +1139,24 @@ private:
 
         // Outlaw RLE, dwaa, dwab
         AtNode* driver = t_output.get_driver();
-        const AtEnum compressions =
-            AiParamGetEnum(AiNodeEntryLookUpParameter(AiNodeGetNodeEntry(driver), "compression"));
-        const int compression = AiNodeGetInt(driver, "compression");
-        const bool cmp_rle = compression == AiEnumGetValue(compressions, "rle"),
-                   cmp_dwa = compression == AiEnumGetValue(compressions, "dwaa") ||
-                             compression == AiEnumGetValue(compressions, "dwab");
-        if (cmp_rle || cmp_dwa) {
-            if (cmp_rle)
-                AiMsgWarning("Cryptomatte cannot be set to RLE compression- it "
-                             "does not work on full float. Switching to Zip.");
-            if (cmp_dwa)
-                AiMsgWarning("Cryptomatte cannot be set to dwa compression- the "
-                             "compression breaks Cryptomattes. Switching to Zip.");
-            AiNodeSetStr(driver, "compression", "zip");
+        const AtNodeEntry *driverEntry = AiNodeGetNodeEntry(driver);
+        const AtParamEntry* compressionParamEntry = AiNodeEntryLookUpParameter(driverEntry, "compression");
+
+        if (compressionParamEntry) {
+            const AtEnum compressions = AiParamGetEnum(compressionParamEntry);
+            const int compression = AiNodeGetInt(driver, "compression");
+            const bool cmp_rle = compression == AiEnumGetValue(compressions, "rle"),
+                       cmp_dwa = compression == AiEnumGetValue(compressions, "dwaa") ||
+                                 compression == AiEnumGetValue(compressions, "dwab");
+            if (cmp_rle || cmp_dwa) {
+                if (cmp_rle)
+                    AiMsgWarning("Cryptomatte cannot be set to RLE compression- it "
+                                 "does not work on full float. Switching to Zip.");
+                if (cmp_dwa)
+                    AiMsgWarning("Cryptomatte cannot be set to dwa compression- the "
+                                 "compression breaks Cryptomattes. Switching to Zip.");
+                AiNodeSetStr(driver, "compression", "zip");
+            }
         }
 
         AtArray* outputs = AiNodeGetArray(AiUniverseGetOptions(universe), "outputs");
@@ -1155,23 +1172,26 @@ private:
 
             const String filter_rank_name = t_output.aov_name_tok + "_filter" + rank_num;
             const String aov_rank_name = t_output.aov_name_tok + rank_num;
+            if (create_depth_outputs) {
+                if (AiNodeLookUpByName(universe, filter_rank_name.c_str()) == nullptr)
+                    AtNode* filter = create_filter(universe, orig_filter, filter_rank_name, i);
 
-            if (AiNodeLookUpByName(universe, filter_rank_name.c_str()) == nullptr)
-                AtNode* filter = create_filter(universe, orig_filter, filter_rank_name, i);
+                TokenizedOutput new_t_output = t_output;
+                new_t_output.aov_name_tok = aov_rank_name;
+                
+                new_t_output.aov_type_tok = "FLOAT";
+                new_t_output.filter_tok = filter_rank_name;
+                new_t_output.half_flag = false;
 
-            TokenizedOutput new_t_output = t_output;
-            new_t_output.aov_name_tok = aov_rank_name;
-            new_t_output.aov_type_tok = "FLOAT";
-            new_t_output.filter_tok = filter_rank_name;
-            new_t_output.half_flag = false;
-
-            String new_output_str = new_t_output.rebuild_output();
-            if (!output_set.count(new_output_str)) {
-                AiAOVRegister(aov_rank_name.c_str(), AI_TYPE_FLOAT, AI_AOV_BLEND_NONE);
-                new_outputs.push_back(new_t_output);
-                output_set.insert(new_output_str);
+                String new_output_str = new_t_output.rebuild_output();
+                if (!output_set.count(new_output_str)) {
+                    new_outputs.push_back(new_t_output);
+                    output_set.insert(new_output_str);
+                }
             }
-
+            // Always call AiAOVRegister for the depth AOVs, even if we didn't create them here
+            // (they could already exist in the scene outputs)
+            AiAOVRegister(aov_rank_name.c_str(), AI_TYPE_FLOAT, AI_AOV_BLEND_NONE);
             AiArraySetStr(crypto_aovs, i, aov_rank_name.c_str());
         }
     }
@@ -1227,17 +1247,20 @@ private:
         path_out = "";
         metadata_path_out = "";
         if (check_driver(driver) && option_sidecar_manifests) {
-            String filepath = String(AiNodeGetStr(driver, "filename").c_str());
-            const size_t exr_found = filepath.find(".exr");
-            if (exr_found != String::npos)
-                filepath = filepath.substr(0, exr_found);
 
-            path_out = filepath + "." + token.c_str() + ".json";
-            const size_t last_partition = path_out.find_last_of("/\\");
-            if (last_partition == String::npos)
-                metadata_path_out += path_out;
-            else
-                metadata_path_out += path_out.substr(last_partition + 1);
+            if (AiNodeEntryLookUpParameter(AiNodeGetNodeEntry(driver), "filename")) {
+                String filepath = String(AiNodeGetStr(driver, "filename").c_str());
+                const size_t exr_found = filepath.find(".exr");
+                if (exr_found != String::npos)
+                    filepath = filepath.substr(0, exr_found);
+
+                path_out = filepath + "." + token.c_str() + ".json";
+                const size_t last_partition = path_out.find_last_of("/\\");
+                if (last_partition == String::npos)
+                    metadata_path_out += path_out;
+                else
+                    metadata_path_out += path_out.substr(last_partition + 1);
+            }
         }
     }
 
@@ -1459,6 +1482,10 @@ private:
         if (!check_driver(driver))
             return;
 
+        if (!AiNodeEntryLookUpParameter(AiNodeGetNodeEntry(driver), "custom_attributes") &&
+            !AiNodeLookUpUserParameter(driver, "custom_attributes")) {
+            AiNodeDeclare(driver, "custom_attributes", "constant ARRAY STRING");
+        }
         AtArray* orig_md = AiNodeGetArray(driver, "custom_attributes");
         const uint32_t orig_num_entries = orig_md ? AiArrayGetNumElements(orig_md) : 0;
 
@@ -1497,7 +1524,7 @@ private:
     }
 
     bool check_driver(AtNode* driver) const {
-        return driver && AiNodeIs(driver, AtString("driver_exr"));
+        return driver && (custom_output_driver || AiNodeIs(driver, AtString("driver_exr")));
     }
 
     bool metadata_needed_on_drivers(const std::vector<AtNode*>& drivers, const AtString aov_name) {

@@ -15,6 +15,8 @@ enum cryptomatteParams {
     p_aov_crypto_object,
     p_aov_crypto_material,
     p_preview_in_exr,
+    p_custom_output_driver,
+    p_create_depth_outputs,
     p_process_maya,
     p_process_paths,
     p_process_obj_path_pipes,
@@ -39,6 +41,8 @@ node_parameters {
     AiParameterStr("aov_crypto_object", "crypto_object");
     AiParameterStr("aov_crypto_material", "crypto_material");
     AiParameterBool("preview_in_exr", CRYPTO_PREVIEWINEXR_DEFAULT);
+    AiParameterBool("custom_output_driver", false);
+    AiParameterBool("create_depth_outputs", true);
     AiParameterBool("process_maya", true);
     AiParameterBool("process_paths", true);
     AiParameterBool("process_obj_path_pipes", true);
@@ -108,8 +112,14 @@ node_update {
                                     AiNodeGetStr(node, "user_crypto_src_2").c_str(),
                                     AiNodeGetStr(node, "user_crypto_src_3").c_str());
 
-    data->setup_all(universe, AiNodeGetStr(node, "aov_crypto_asset"), AiNodeGetStr(node, "aov_crypto_object"),
-                    AiNodeGetStr(node, "aov_crypto_material"), uc_aov_array, uc_src_array);
+    data->setup_all(universe, 
+                    AiNodeGetStr(node, "aov_crypto_asset"), 
+                    AiNodeGetStr(node, "aov_crypto_object"),
+                    AiNodeGetStr(node, "aov_crypto_material"), 
+                    uc_aov_array, 
+                    uc_src_array, 
+                    AiNodeGetBool(node, "custom_output_driver"), 
+                    AiNodeGetBool(node, "create_depth_outputs"));
 }
 
 shader_evaluate {
