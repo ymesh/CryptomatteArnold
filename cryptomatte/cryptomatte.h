@@ -1020,6 +1020,10 @@ private:
             filter_tok = has_camera ? c3 : c2;
             driver_tok = has_camera ? c4 : c3;
             layer_tok = has_camera ? c5 : c4;
+            // Ensure we're not confusing the optional layer token
+            //  with the (also optional) HALF flag
+            if (layer_tok == String("HALF"))
+                layer_tok = String("");
 
             driver = AiNodeLookUpByName(universe, driver_tok.c_str());
         }
