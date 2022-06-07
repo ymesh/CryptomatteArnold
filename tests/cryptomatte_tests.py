@@ -358,6 +358,7 @@ class Cryptomatte000(CryptomatteTestBase):
             self.assertIn("Cryptomatte unit tests: Complete", log_contents,
                           "C++ unit test did not complete. ")
 
+    @unittest.skip("Not necessary outside of distributing binaries")
     def test_build_compatibility(self):
         """ Tests that builds maximize compatibility with 
         later versions of Arnold. Currently this means building with
