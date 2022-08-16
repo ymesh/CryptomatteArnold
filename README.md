@@ -1,8 +1,8 @@
 ![Cryptomatte Logo](/docs/header.png)
 
-# Cryptomatte for Arnold 5
+# Cryptomatte for Arnold
 
-This is the Arnold 5 implementation of [Cryptomatte](https://github.com/Psyop/Cryptomatte), by Jonah Friedman, Andy Jones, and Anders Langlands. Cryptomatte creates ID mattes automatically with support for motion blur, transparency, and depth of field, using names available in the Arnold scene at render time. 
+This is the Arnold implementation of [Cryptomatte](https://github.com/Psyop/Cryptomatte), by Jonah Friedman, Andy Jones, and Anders Langlands. Cryptomatte creates ID mattes automatically with support for motion blur, transparency, and depth of field, using names available in the Arnold scene at render time. 
 
 Version 1.2.0 See [changelog](CHANGELOG.md) for version history. 
 
@@ -13,7 +13,7 @@ Version 1.2.0 See [changelog](CHANGELOG.md) for version history.
 
 ## Documentation for Users
 
-* [Main Cryptomatte for Arnold 5 shader documentation](/docs/cryptomatte.md)
+* [Main Cryptomatte for Arnold shader documentation](/docs/cryptomatte.md)
 * Usage in \*toA plugins (Helpfully provided by Solid Angle):
   * [MtoA (Maya)](https://support.solidangle.com/display/A5AFMUG/Cryptomatte)
   * [HtoA (Houdini)](https://support.solidangle.com/display/A5AFHUG/Cryptomatte)
