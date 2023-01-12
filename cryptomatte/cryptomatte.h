@@ -139,8 +139,7 @@ extern const AtString CRYPTO_ASSET_OFFSET_UDATA;
 extern const AtString CRYPTO_OBJECT_OFFSET_UDATA;
 extern const AtString CRYPTO_MATERIAL_OFFSET_UDATA;
 
-extern AtCritSec g_critsec;
-extern bool g_critsec_active;
+extern AtMutex g_critsec;
 
 // Some static AtStrings to cache
 const AtString aStr_shader("shader");
@@ -166,31 +165,12 @@ using CryptoNameFlag = uint8_t;
 //
 ///////////////////////////////////////////////
 
-inline bool crypto_crit_sec_init() {
-    // Called in node_plugin_initialize. Returns true as a convenience.
-    g_critsec_active = true;
-    AiCritSecInit(&g_critsec);
-    return true;
-}
-
-inline void crypto_crit_sec_close() {
-    // Called in node_plugin_cleanup
-    g_critsec_active = false;
-    AiCritSecClose(&g_critsec);
-}
-
 inline void crypto_crit_sec_enter() {
-    // If the crit sec has not been inited since last close, we simply do not enter.
-    // (Used by Cryptomatte filter.)
-    if (g_critsec_active)
-        AiCritSecEnter(&g_critsec);
+    g_critsec.lock();
 }
 
 inline void crypto_crit_sec_leave() {
-    // If the crit sec has not been inited since last close, we simply do not enter.
-    // (Used by Cryptomatte filter.)
-    if (g_critsec_active)
-        AiCritSecLeave(&g_critsec);
+    g_critsec.unlock();
 }
 
 ///////////////////////////////////////////////
@@ -812,8 +792,6 @@ public:
         set_option_channels(CRYPTO_DEPTH_DEFAULT, CRYPTO_PREVIEWINEXR_DEFAULT);
         set_option_namespace_stripping(CRYPTO_NAME_ALL, CRYPTO_NAME_ALL);
         set_option_ice_pcloud_verbosity(CRYPTO_ICEPCLOUDVERB_DEFAULT);
-        if (!g_critsec_active)
-            AiMsgError("[Cryptomatte] Critical section was not initialized. ");
     }
 
     void setup_all(AtUniverse *universe, 

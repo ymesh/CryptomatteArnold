@@ -58,9 +58,9 @@ node_parameters {
     AiParameterStr("user_crypto_src_3", "");
 }
 
-node_plugin_initialize { return crypto_crit_sec_init(); }
+node_plugin_initialize { return true; }
 
-node_plugin_cleanup { crypto_crit_sec_close(); }
+node_plugin_cleanup { }
 
 node_initialize {
     CryptomatteData* data = new CryptomatteData();
