@@ -139,7 +139,7 @@ extern const AtString CRYPTO_ASSET_OFFSET_UDATA;
 extern const AtString CRYPTO_OBJECT_OFFSET_UDATA;
 extern const AtString CRYPTO_MATERIAL_OFFSET_UDATA;
 
-extern AtMutex g_critsec;
+extern AtMutex g_crypto_mutex;
 
 // Some static AtStrings to cache
 const AtString aStr_shader("shader");
@@ -158,20 +158,6 @@ using CryptoNameFlag = uint8_t;
 #define CRYPTO_NAME_LEGACY        0x20 /* sitoa, old-c4d style */
 #define CRYPTO_NAME_ALL           CryptoNameFlag(-1)
 // clang-format on
-
-///////////////////////////////////////////////
-//
-//      Crit sec utilities
-//
-///////////////////////////////////////////////
-
-inline void crypto_crit_sec_enter() {
-    g_critsec.lock();
-}
-
-inline void crypto_crit_sec_leave() {
-    g_critsec.unlock();
-}
 
 ///////////////////////////////////////////////
 //
@@ -811,9 +797,9 @@ public:
 
         user_cryptomattes = UserCryptomattes(uc_aov_array, uc_src_array);
 
-        crypto_crit_sec_enter();
+        g_crypto_mutex.lock();
         setup_outputs(universe);
-        crypto_crit_sec_leave();
+        g_crypto_mutex.unlock();
     }
 
     void set_option_channels(int depth, bool exr_preview_channels) {
