@@ -4,11 +4,11 @@
 
 This is the Arnold implementation of [Cryptomatte](https://github.com/Psyop/Cryptomatte), by Jonah Friedman, Andy Jones, and Anders Langlands. Cryptomatte creates ID mattes automatically with support for motion blur, transparency, and depth of field, using names available in the Arnold scene at render time. 
 
-Version 1.2.0 See [changelog](CHANGELOG.md) for version history. 
+Version 1.2.1 See [changelog](CHANGELOG.md) for version history. 
 
 ## Requirements
 
-* Arnold 5.0.1 or later
+* Arnold 6.0.4 or later
 * (Windows) Visual Studio 2015 Redistributable
 
 ## Documentation for Users

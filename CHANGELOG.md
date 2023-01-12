@@ -1,3 +1,7 @@
+### CryptomatteArnold 1.2.1 release notes: 
+
+* Removed call to deprecated `AtCritSec` and replaced with `AtMutex` (Thanks @ThiagoIze)
+
 ### CryptomatteArnold 1.2.0 release notes: 
 
 Adds capabilities required to use Cryptomatte in Solaris. (Note this doesn't automatically bring support for Cryptomatte to Solaris, but makes the necessary changes to CryptomatteArnold.)
