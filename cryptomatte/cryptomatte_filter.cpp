@@ -100,9 +100,9 @@ void node_update_content(AtNode* node) {
 }
 
 node_update {
-    crypto_crit_sec_enter();
+    g_crypto_mutex.lock();
     node_update_content(node);
-    crypto_crit_sec_leave();
+    g_crypto_mutex.unlock();
 }
 
 filter_output_type {
