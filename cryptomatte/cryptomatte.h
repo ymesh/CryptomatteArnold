@@ -797,9 +797,7 @@ public:
 
         user_cryptomattes = UserCryptomattes(uc_aov_array, uc_src_array);
 
-        g_crypto_mutex.lock();
         setup_outputs(universe);
-        g_crypto_mutex.unlock();
     }
 
     void set_option_channels(int depth, bool exr_preview_channels) {
@@ -1032,6 +1030,8 @@ private:
     };
 
     void setup_outputs(AtUniverse *universe) {
+        std::lock_guard<AtMutex> guard(g_crypto_mutex);
+
         const AtArray* outputs = AiNodeGetArray(AiUniverseGetOptions(universe), "outputs");
         const uint32_t prev_output_num = AiArrayGetNumElements(outputs);
         AtNode* noop_filter = option_exr_preview_channels ? nullptr : get_or_create_noop_filter(universe);
