@@ -1084,12 +1084,11 @@ private:
             outputs_orig[i] = t_output;
         }
 
+        if (option_sidecar_manifests && (outputs_new.size() + outputs_orig.size()) > 0) {
+            AtNode* manifest_driver = setup_manifest_driver(universe);
+            outputs_new.push_back(TokenizedOutput(universe, manifest_driver));
+        }
         if (outputs_new.size()) {
-            if (option_sidecar_manifests) {
-                AtNode* manifest_driver = setup_manifest_driver(universe);
-                outputs_new.push_back(TokenizedOutput(universe, manifest_driver));
-            }
-
             for (auto& t_output : outputs_orig) {
                 // if outputs are not flagged as half, and their drivers are switched
                 // to full float, the output must be set to half to preserve behavior.
