@@ -1043,7 +1043,7 @@ private:
         std::vector<std::vector<AtNode*>> tmp_uc_drivers(user_cryptomattes.count);
 
         std::vector<TokenizedOutput> outputs_orig(prev_output_num), outputs_new;
-
+        int crypto_aovs_count = 0;
         for (uint32_t i = 0; i < prev_output_num; i++) {
             TokenizedOutput t_output(universe, AiArrayGetStr(outputs, i));
             AtNode* driver = t_output.get_driver();
@@ -1069,6 +1069,7 @@ private:
             }
 
             if (crypto_aovs && check_driver(driver)) {
+                crypto_aovs_count++;
                 setup_new_outputs(universe, t_output, crypto_aovs, outputs_new);
 
                 if (AiNodeEntryLookUpParameter(AiNodeGetNodeEntry(driver), "half_precision")) {
@@ -1084,7 +1085,7 @@ private:
             outputs_orig[i] = t_output;
         }
 
-        if (option_sidecar_manifests && (outputs_new.size() + outputs_orig.size()) > 0) {
+        if (option_sidecar_manifests && crypto_aovs_count) {
             AtNode* manifest_driver = setup_manifest_driver(universe);
             outputs_new.push_back(TokenizedOutput(universe, manifest_driver));
         }
