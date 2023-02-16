@@ -1087,7 +1087,14 @@ private:
 
         if (option_sidecar_manifests && crypto_aovs_count) {
             AtNode* manifest_driver = setup_manifest_driver(universe);
-            outputs_new.push_back(TokenizedOutput(universe, manifest_driver));
+            TokenizedOutput t_output(universe, manifest_driver);
+
+            // Check if the output is already in the list, in case the scene is being 
+            // reused for another frame. 
+            std::unordered_set<String> output_set = get_current_outputs_set(universe);
+            if (!output_set.count(t_output.rebuild_output())) {
+                outputs_new.push_back(t_output);
+            } 
         }
         if (outputs_new.size()) {
             for (auto& t_output : outputs_orig) {
@@ -1111,6 +1118,14 @@ private:
 
         build_standard_metadata(universe, driver_asset, driver_object, driver_material);
         build_user_metadata(universe, tmp_uc_drivers);
+    }
+
+    std::unordered_set<String> get_current_outputs_set(AtUniverse *universe) const {
+        AtArray* outputs = AiNodeGetArray(AiUniverseGetOptions(universe), "outputs");
+        std::unordered_set<String> output_set;
+        for (uint32_t i = 0; i < AiArrayGetNumElements(outputs); i++)
+            output_set.insert(String(AiArrayGetStr(outputs, i)));
+        return output_set;
     }
 
     void setup_new_outputs(AtUniverse *universe, TokenizedOutput& t_output, 
@@ -1140,11 +1155,7 @@ private:
             }
         }
 
-        AtArray* outputs = AiNodeGetArray(AiUniverseGetOptions(universe), "outputs");
-
-        std::unordered_set<String> output_set;
-        for (uint32_t i = 0; i < AiArrayGetNumElements(outputs); i++)
-            output_set.insert(String(AiArrayGetStr(outputs, i)));
+        std::unordered_set<String> output_set = get_current_outputs_set(universe);
 
         // Create filters and outputs as needed
         for (int i = 0; i < option_aov_depth; i++) {
