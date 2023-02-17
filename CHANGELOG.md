@@ -1,3 +1,7 @@
+### CryptomatteArnold 1.2.2 release notes: 
+
+* Fixed an issue where sidecar manifests did not work with Solaris (Thanks @cpichard)
+
 ### CryptomatteArnold 1.2.1 release notes: 
 
 * Removed call to deprecated `AtCritSec` and replaced with `AtMutex` (Thanks @ThiagoIze)
