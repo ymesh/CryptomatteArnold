@@ -351,12 +351,14 @@ class Cryptomatte000(CryptomatteTestBase):
         self.assertCryptomattePixelsMatch()
 
     def test_unit_tests_ran(self):
+        run_msg = "Cryptomatte unit tests: Running"
+        complete_msg = "Cryptomatte unit tests: Complete"
         with open(self.result_log) as f:
             log_contents = f.read()
-            self.assertIn("Cryptomatte unit tests: Running", log_contents,
-                          "C++ unit test did not run. ")
-            self.assertIn("Cryptomatte unit tests: Complete", log_contents,
-                          "C++ unit test did not complete. ")
+            self.assertIn(run_msg, log_contents,
+                          'C++ unit test did not run. Could not find in logs: "%s"' % run_msg)
+            self.assertIn(complete_msg, log_contents,
+                          'C++ unit test did not complete. Could not find in logs: "%s"' % complete_msg)
 
     @unittest.skip("Not necessary outside of distributing binaries")
     def test_build_compatibility(self):
