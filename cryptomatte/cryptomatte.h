@@ -1032,7 +1032,7 @@ private:
     void setup_outputs(AtUniverse *universe) {
         std::lock_guard<AtMutex> guard(g_crypto_mutex);
 
-        const AtArray* outputs = AiNodeGetArray(AiUniverseGetOptions(universe), "outputs");
+        const AtArray* outputs = AiNodeGetArray(AiUniverseGetOptions(universe), AtString("outputs"));
         const uint32_t prev_output_num = AiArrayGetNumElements(outputs);
         AtNode* noop_filter = option_exr_preview_channels ? nullptr : get_or_create_noop_filter(universe);
 
@@ -1113,7 +1113,7 @@ private:
             for (auto& t_output : outputs_new)
                 AiArraySetStr(final_outputs, i++, t_output.rebuild_output().c_str());
 
-            AiNodeSetArray(AiUniverseGetOptions(universe), "outputs", final_outputs);
+            AiNodeSetArray(AiUniverseGetOptions(universe), AtString("outputs"), final_outputs);
         }
 
         build_standard_metadata(universe, driver_asset, driver_object, driver_material);
@@ -1121,7 +1121,7 @@ private:
     }
 
     std::unordered_set<String> get_current_outputs_set(AtUniverse *universe) const {
-        AtArray* outputs = AiNodeGetArray(AiUniverseGetOptions(universe), "outputs");
+        AtArray* outputs = AiNodeGetArray(AiUniverseGetOptions(universe), AtString("outputs"));
         std::unordered_set<String> output_set;
         for (uint32_t i = 0; i < AiArrayGetNumElements(outputs); i++)
             output_set.insert(String(AiArrayGetStr(outputs, i)));
@@ -1312,7 +1312,7 @@ private:
             if (do_md_material) {
                 // Process all shaders from the objects into the manifest.
                 // This includes cluster materials.
-                AtArray* shaders = AiNodeGetArray(node, "shader");
+                AtArray* shaders = AiNodeGetArray(node, AtString("shader"));
                 if (!shaders)
                     continue;
                 for (uint32_t i = 0; i < AiArrayGetNumElements(shaders); i++) {
@@ -1482,7 +1482,7 @@ private:
             !AiNodeLookUpUserParameter(driver, AtString("custom_attributes"))) {
             AiNodeDeclare(driver, AtString("custom_attributes"), "constant ARRAY STRING");
         }
-        AtArray* orig_md = AiNodeGetArray(driver, AtString"custom_attributes"));
+        AtArray* orig_md = AiNodeGetArray(driver, AtString("custom_attributes"));
         const uint32_t orig_num_entries = orig_md ? AiArrayGetNumElements(orig_md) : 0;
 
         const String metadata_id = compute_metadata_ID(cryptomatte_name);
@@ -1516,7 +1516,7 @@ private:
         AiArraySetStr(combined_md, orig_num_entries + 2, metadata_conv.c_str());
         AiArraySetStr(combined_md, orig_num_entries + 3, metadata_name.c_str());
 
-        AiNodeSetArray(driver, "custom_attributes", combined_md);
+        AiNodeSetArray(driver, AtString("custom_attributes"), combined_md);
     }
 
     bool check_driver(AtNode* driver) const {
