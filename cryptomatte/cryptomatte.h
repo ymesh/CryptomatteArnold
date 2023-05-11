@@ -1200,7 +1200,7 @@ private:
         const String filter_type = AiNodeEntryGetName(filter_nentry);
         const String filter_param = filter_type.substr(0, filter_type.find("_filter"));
 
-        AtNode* filter = AiNode(universe, "cryptomatte_filter", AtString(filter_name.c_str()), nullptr);
+        AtNode* filter = AiNode(universe, AtString("cryptomatte_filter"), AtString(filter_name.c_str()), nullptr);
         AiNodeSetStr(filter, AtString("filter"), AtString(filter_param.c_str()));
         AiNodeSetInt(filter, AtString("rank"), aovindex * 2);
         AiNodeSetFlt(filter, AtString("width"), width);
