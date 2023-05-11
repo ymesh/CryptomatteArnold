@@ -294,15 +294,15 @@ def DebugPrintElement(el, d):
    indent = ''
    for i in range(d):
       indent += '\t'
-   print '%s %s' % (indent, el)
+   print('%s %s' % (indent, el))
    if isinstance(el, Group) and el.children:
-      print '%s has %d children' % (el, len(el.children))
+      print('%s has %d children' % (el, len(el.children)))
       for e in el.children:
          DebugPrintElement(e, d+1)
       d -= 1
 
 def DebugPrintShaderDef(sd):
-   print '%s' % sd
+   print('%s' % sd)
    DebugPrintElement(sd.root, 0)
 
 def writei(f, s, d=0):
@@ -1196,7 +1196,7 @@ def remapControls(sd):
 # Main. Load the UI file and build UI templates from the returned structure
 if __name__ == '__main__':
    if len(sys.argv) < 7:
-      print 'ERROR: must supply exactly ui source input and mtd, ae, spdl and args outputs'
+      print('ERROR: must supply exactly ui source input and mtd, ae, spdl and args outputs')
       sys.exit(1)
 
    ui = ShaderDef()
@@ -1204,7 +1204,7 @@ if __name__ == '__main__':
    execfile(sys.argv[1], globals_dict)
 
    if not isinstance(ui, ShaderDef):
-      print 'ERROR: ui object is not a ShaderDef. Did you assign something else to it by mistake?'
+      print('ERROR: ui object is not a ShaderDef. Did you assign something else to it by mistake?')
       sys.exit(2)
 
    WriteMTD(ui, sys.argv[2])  
