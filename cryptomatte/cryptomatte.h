@@ -1072,9 +1072,9 @@ private:
                 crypto_aovs_count++;
                 setup_new_outputs(universe, t_output, crypto_aovs, outputs_new);
 
-                if (AiNodeEntryLookUpParameter(AiNodeGetNodeEntry(driver), "half_precision")) {
-                    if (AiNodeGetBool(driver, "half_precision")) {
-                        AiNodeSetBool(driver, "half_precision", false);
+                if (AiNodeEntryLookUpParameter(AiNodeGetNodeEntry(driver), AtString("half_precision"))) {
+                    if (AiNodeGetBool(driver, AtString("half_precision"))) {
+                        AiNodeSetBool(driver, AtString("half_precision"), false);
                         modified_drivers.insert(driver);
                     }
                 }
@@ -1136,12 +1136,12 @@ private:
         // Outlaw RLE, dwaa, dwab
         AtNode* driver = t_output.get_driver();
         const AtNodeEntry *driverEntry = AiNodeGetNodeEntry(driver);
-        const AtParamEntry* compressionParamEntry = AiNodeEntryLookUpParameter(driverEntry, "compression");
+        const AtParamEntry* compressionParamEntry = AiNodeEntryLookUpParameter(driverEntry, AtString("compression"));
 
         if (compressionParamEntry) {
             const AtEnum compressions = AiParamGetEnum(compressionParamEntry);
-            const int compression = AiNodeGetInt(driver, "compression");
-            const bool cmp_rle = compression == AiEnumGetValue(compressions, "rle"),
+            const int compression = AiNodeGetInt(driver, AtString("compression"));
+            const bool cmp_rle = compression == AiEnumGetValue(compressions, AtString("rle")),
                        cmp_dwa = compression == AiEnumGetValue(compressions, "dwaa") ||
                                  compression == AiEnumGetValue(compressions, "dwab");
             if (cmp_rle || cmp_dwa) {
@@ -1151,7 +1151,7 @@ private:
                 if (cmp_dwa)
                     AiMsgWarning("Cryptomatte cannot be set to dwa compression- the "
                                  "compression breaks Cryptomattes. Switching to Zip.");
-                AiNodeSetStr(driver, "compression", "zip");
+                AiNodeSetStr(driver, AtString("compression"), "zip");
             }
         }
 
@@ -1194,16 +1194,16 @@ private:
 
     AtNode* create_filter(AtUniverse *universe, const AtNode* orig_filter, const String filter_name, int aovindex) const {
         const AtNodeEntry* filter_nentry = AiNodeGetNodeEntry(orig_filter);
-        const auto width = AiNodeEntryLookUpParameter(filter_nentry, "width")
-                               ? AiNodeGetFlt(orig_filter, "width")
+        const auto width = AiNodeEntryLookUpParameter(filter_nentry, AtString("width"))
+                               ? AiNodeGetFlt(orig_filter, AtString("width"))
                                : 2.0f;
         const String filter_type = AiNodeEntryGetName(filter_nentry);
         const String filter_param = filter_type.substr(0, filter_type.find("_filter"));
 
-        AtNode* filter = AiNode(universe, "cryptomatte_filter", filter_name.c_str(), nullptr);
-        AiNodeSetStr(filter, "filter", filter_param.c_str());
-        AiNodeSetInt(filter, "rank", aovindex * 2);
-        AiNodeSetFlt(filter, "width", width);
+        AtNode* filter = AiNode(universe, "cryptomatte_filter", AtString(filter_name.c_str()), nullptr);
+        AiNodeSetStr(filter, AtString("filter"), filter_param.c_str());
+        AiNodeSetInt(filter, AtString("rank"), aovindex * 2);
+        AiNodeSetFlt(filter, AtString("width"), width);
         return filter;
     }
 
@@ -1211,8 +1211,8 @@ private:
         const static AtString noop_filter_name("cryptomatte_noop_filter");
         AtNode* filter = AiNodeLookUpByName(universe, noop_filter_name);
         if (!filter) {
-            filter = AiNode(universe, "cryptomatte_filter", noop_filter_name, nullptr);
-            AiNodeSetBool(filter, "noop", true);
+            filter = AiNode(universe, AtString("cryptomatte_filter"), noop_filter_name, nullptr);
+            AiNodeSetBool(filter, AtString("noop"), true);
         }
         return filter;
     }
@@ -1229,7 +1229,7 @@ private:
         AtString manifest_driver_name("cryptomatte_manifest_driver");
         AtNode* manifest_driver = AiNodeLookUpByName(universe, manifest_driver_name);
         if (!manifest_driver)
-            manifest_driver = AiNode(universe, "cryptomatte_manifest_driver", manifest_driver_name, nullptr);
+            manifest_driver = AiNode(universe, manifest_driver_name, manifest_driver_name, nullptr);
         AiNodeSetLocalData(manifest_driver, this);
         return manifest_driver;
     }
@@ -1244,8 +1244,8 @@ private:
         metadata_path_out = "";
         if (check_driver(driver) && option_sidecar_manifests) {
 
-            if (AiNodeEntryLookUpParameter(AiNodeGetNodeEntry(driver), "filename")) {
-                String filepath = String(AiNodeGetStr(driver, "filename").c_str());
+            if (AiNodeEntryLookUpParameter(AiNodeGetNodeEntry(driver), AtString("filename"))) {
+                String filepath = String(AiNodeGetStr(driver, AtString("filename")).c_str());
                 const size_t exr_found = filepath.find(".exr");
                 if (exr_found != String::npos)
                     filepath = filepath.substr(0, exr_found);
