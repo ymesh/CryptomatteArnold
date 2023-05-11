@@ -1535,14 +1535,14 @@ private:
 
     bool metadata_needed(AtNode* driver, const AtString aov_name) const {
         String flag = String(CRYPTOMATTE_METADATA_SET_FLAG) + aov_name.c_str();
-        return check_driver(driver) && !AiNodeLookUpUserParameter(driver, flag.c_str());
+        return check_driver(driver) && !AiNodeLookUpUserParameter(driver, AtString(flag.c_str()));
     }
 
     void metadata_set_unneeded(AtNode* driver, const AtString aov_name) const {
         if (!driver)
             return;
         String flag = String(CRYPTOMATTE_METADATA_SET_FLAG) + aov_name.c_str();
-        if (!AiNodeLookUpUserParameter(driver, flag.c_str()))
+        if (!AiNodeLookUpUserParameter(driver, AtString(flag.c_str())))
             AiNodeDeclare(driver, AtString(flag.c_str()), "constant BOOL");
     }
 
