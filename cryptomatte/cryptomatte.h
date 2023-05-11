@@ -1151,7 +1151,7 @@ private:
                 if (cmp_dwa)
                     AiMsgWarning("Cryptomatte cannot be set to dwa compression- the "
                                  "compression breaks Cryptomattes. Switching to Zip.");
-                AiNodeSetStr(driver, AtString("compression"), "zip");
+                AiNodeSetStr(driver, AtString("compression"), AtString("zip"));
             }
         }
 
@@ -1201,7 +1201,7 @@ private:
         const String filter_param = filter_type.substr(0, filter_type.find("_filter"));
 
         AtNode* filter = AiNode(universe, "cryptomatte_filter", AtString(filter_name.c_str()), nullptr);
-        AiNodeSetStr(filter, AtString("filter"), filter_param.c_str());
+        AiNodeSetStr(filter, AtString("filter"), AtString(filter_param.c_str()));
         AiNodeSetInt(filter, AtString("rank"), aovindex * 2);
         AiNodeSetFlt(filter, AtString("width"), width);
         return filter;
