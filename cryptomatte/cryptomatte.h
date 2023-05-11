@@ -444,7 +444,7 @@ inline AtString get_user_data(const AtShaderGlobals* sg, const AtNode* node,
     if (pentry) {
         if (AiUserParamGetType(pentry) == AI_TYPE_STRING &&
             AiUserParamGetCategory(pentry) == AI_USERDEF_CONSTANT) {
-            return AiNodeGetStr(node, user_data_name);
+            return AiNodeGetStr(node, AtString(user_data_name));
         }
     }
     if (sg) {
@@ -987,7 +987,7 @@ private:
             if (layer_tok == String("HALF"))
                 layer_tok = String("");
 
-            driver = AiNodeLookUpByName(universe, driver_tok.c_str());
+            driver = AiNodeLookUpByName(universe, AtString(driver_tok.c_str()));
         }
 
         String rebuild_output() const {
@@ -1019,7 +1019,7 @@ private:
             if (driver && driver_tok == String(AiNodeGetName(driver)))
                 return driver;
             else if (!driver_tok.empty())
-                return AiNodeLookUpByName(universe, driver_tok.c_str());
+                return AiNodeLookUpByName(universe, AtString(driver_tok.c_str()));
             else
                 return nullptr;
         }
@@ -1131,7 +1131,7 @@ private:
     void setup_new_outputs(AtUniverse *universe, TokenizedOutput& t_output, 
                           AtArray* crypto_aovs, std::vector<TokenizedOutput>& new_outputs) const {
         // Populates crypto_aovs and new_outputs
-        AtNode* orig_filter = AiNodeLookUpByName(universe, t_output.filter_tok.c_str());
+        AtNode* orig_filter = AiNodeLookUpByName(universe, AtString(t_output.filter_tok.c_str()));
 
         // Outlaw RLE, dwaa, dwab
         AtNode* driver = t_output.get_driver();
@@ -1165,7 +1165,7 @@ private:
             const String filter_rank_name = t_output.aov_name_tok + "_filter" + rank_num;
             const String aov_rank_name = t_output.aov_name_tok + rank_num;
             if (create_depth_outputs) {
-                if (AiNodeLookUpByName(universe, filter_rank_name.c_str()) == nullptr)
+                if (AiNodeLookUpByName(universe, AtString(filter_rank_name.c_str())) == nullptr)
                     AtNode* filter = create_filter(universe, orig_filter, filter_rank_name, i);
 
                 TokenizedOutput new_t_output = t_output;
@@ -1478,11 +1478,11 @@ private:
         if (!check_driver(driver))
             return;
 
-        if (!AiNodeEntryLookUpParameter(AiNodeGetNodeEntry(driver), "custom_attributes") &&
-            !AiNodeLookUpUserParameter(driver, "custom_attributes")) {
-            AiNodeDeclare(driver, "custom_attributes", "constant ARRAY STRING");
+        if (!AiNodeEntryLookUpParameter(AiNodeGetNodeEntry(driver), AtString("custom_attributes")) &&
+            !AiNodeLookUpUserParameter(driver, AtString("custom_attributes"))) {
+            AiNodeDeclare(driver, AtString("custom_attributes"), "constant ARRAY STRING");
         }
-        AtArray* orig_md = AiNodeGetArray(driver, "custom_attributes");
+        AtArray* orig_md = AiNodeGetArray(driver, AtString"custom_attributes"));
         const uint32_t orig_num_entries = orig_md ? AiArrayGetNumElements(orig_md) : 0;
 
         const String metadata_id = compute_metadata_ID(cryptomatte_name);
@@ -1543,7 +1543,7 @@ private:
             return;
         String flag = String(CRYPTOMATTE_METADATA_SET_FLAG) + aov_name.c_str();
         if (!AiNodeLookUpUserParameter(driver, flag.c_str()))
-            AiNodeDeclare(driver, flag.c_str(), "constant BOOL");
+            AiNodeDeclare(driver, AtString(flag.c_str()), "constant BOOL");
     }
 
     String compute_metadata_ID(AtString cryptomatte_name) const {
