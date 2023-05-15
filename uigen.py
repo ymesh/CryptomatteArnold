@@ -33,7 +33,7 @@ class Group(UiElement):
          ident = name.replace(' ', '')
          ident = ident.replace('_', '')
          ident = ident.lower()
-         self.ident = ident.translate(None,'aeiouy')
+         self.ident = "".join(c for c in ident if c not in 'aeiouy')
          
       else:
          self.ident = ident
@@ -54,7 +54,7 @@ class Tab(Group):
          ident = name.replace(' ', '')
          ident = ident.replace('_', '')
          ident = ident.lower()
-         self.ident = ident.translate(None,'aeiouy')
+         self.ident = "".join(c for c in ident if c not in 'aeiouy')
       else:
          self.ident = ident
 
