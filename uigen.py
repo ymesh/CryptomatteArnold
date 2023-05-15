@@ -6,6 +6,18 @@ import sys
 import uuid
 from math import pow
 
+# https://stackoverflow.com/questions/436198/what-is-an-alternative-to-execfile-in-python-3
+def _execfile(filepath, globals=None, locals=None):
+    if globals is None:
+        globals = {}
+    globals.update({
+        "__file__": filepath,
+        "__name__": "__main__",
+    })
+    with open(filepath, 'rb') as file:
+        exec(compile(file.read(), filepath, 'exec'), globals, locals)
+
+
 def enum(*sequential, **named):
    enums = dict(zip(sequential, range(len(sequential))), **named)
    reverse = dict((value, key) for key, value in enums.iteritems())
@@ -1198,7 +1210,7 @@ if __name__ == '__main__':
 
    ui = ShaderDef()
    globals_dict = {'ui':ui}
-   execfile(sys.argv[1], globals_dict)
+   _execfile(sys.argv[1], globals_dict)
 
    if not isinstance(ui, ShaderDef):
       print('ERROR: ui object is not a ShaderDef. Did you assign something else to it by mistake?')
