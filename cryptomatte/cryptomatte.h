@@ -490,7 +490,7 @@ inline void offset_name(const AtShaderGlobals* sg, const AtNode* node, const int
                         char obj_name_out[MAX_STRING_LENGTH]) {
     if (offset) {
         char offset_num_str[12];
-        sprintf(offset_num_str, "_%d", offset);
+        snprintf(offset_num_str, 12, "_%d", offset);
         strcat(obj_name_out, offset_num_str);
     }
 }
@@ -567,7 +567,7 @@ inline void write_manifest_to_string(const ManifestMap& map, String& manf_string
         uint32_t float_bits;
         std::memcpy(&float_bits, &hash_value, 4);
         char hex_chars[9];
-        sprintf(hex_chars, "%08x", float_bits);
+        snprintf(hex_chars, 9, "%08x", float_bits);
 
         pair.clear();
         pair.append("\"");
@@ -1160,7 +1160,7 @@ private:
         // Create filters and outputs as needed
         for (int i = 0; i < option_aov_depth; i++) {
             char rank_num[3];
-            sprintf(rank_num, "%002d", i);
+            snprintf(rank_num, 3, "%002d", i);
 
             const String filter_rank_name = t_output.aov_name_tok + "_filter" + rank_num;
             const String aov_rank_name = t_output.aov_name_tok + rank_num;
@@ -1551,7 +1551,7 @@ private:
         uint32_t int_id;
         std::memcpy(&int_id, &float_id, 4);
         char hex_chars[9];
-        sprintf(hex_chars, "%08x", int_id);
+        snprintf(hex_chars, 9, "%08x", int_id);
         return String(hex_chars).substr(0, 7);
     }
 
