@@ -5,7 +5,6 @@ import os
 import sys
 import uuid
 from math import pow
-from string import maketrans
 
 def enum(*sequential, **named):
    enums = dict(zip(sequential, range(len(sequential))), **named)
@@ -34,8 +33,7 @@ class Group(UiElement):
          ident = name.replace(' ', '')
          ident = ident.replace('_', '')
          ident = ident.lower()
-         temptrans = maketrans('','')
-         self.ident = ident.translate(temptrans,'aeiouy')
+         self.ident = ident.translate(None,'aeiouy')
          
       else:
          self.ident = ident
@@ -56,8 +54,7 @@ class Tab(Group):
          ident = name.replace(' ', '')
          ident = ident.replace('_', '')
          ident = ident.lower()
-         temptrans = maketrans('','')
-         self.ident = ident.translate(temptrans,'aeiouy')
+         self.ident = ident.translate(None,'aeiouy')
       else:
          self.ident = ident
 
