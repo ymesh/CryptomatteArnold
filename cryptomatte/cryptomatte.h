@@ -483,7 +483,7 @@ inline AtString get_user_data(const AtShaderGlobals* sg, const AtNode* node,
     if (pentry) {
         if (AiUserParamGetType(pentry) == AI_TYPE_STRING &&
             AiUserParamGetCategory(pentry) == AI_USERDEF_CONSTANT) {
-            return AiNodeGetStr(node, AtString(user_data_name));
+            return AiNodeGetStr(node, user_data_name);
         }
     }
     if (sg) {
