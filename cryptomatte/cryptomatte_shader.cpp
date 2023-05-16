@@ -77,49 +77,49 @@ node_update {
     CryptomatteData* data = reinterpret_cast<CryptomatteData*>(AiNodeGetLocalData(node));
     AtUniverse *universe = AiNodeGetUniverse(node);
 
-    data->set_option_sidecar_manifests(AiNodeGetBool(node, AtString("sidecar_manifests")));
-    data->set_option_channels(AiNodeGetInt(node, AtString("cryptomatte_depth")),
-                              AiNodeGetBool(node, AtString("preview_in_exr")));
+    data->set_option_sidecar_manifests(AiNodeGetBool(node, aStr_sidecar_manifests));
+    data->set_option_channels(AiNodeGetInt(node, aStr_cryptomatte_depth),
+                              AiNodeGetBool(node, aStr_preview_in_exr));
 
     CryptoNameFlag flags = CRYPTO_NAME_ALL;
-    if (!AiNodeGetBool(node, AtString("process_maya")))
+    if (!AiNodeGetBool(node, aStr_process_maya))
         flags ^= CRYPTO_NAME_MAYA;
-    if (!AiNodeGetBool(node, AtString("process_paths")))
+    if (!AiNodeGetBool(node, aStr_process_paths))
         flags ^= CRYPTO_NAME_PATHS;
-    if (!AiNodeGetBool(node, AtString("process_obj_path_pipes")))
+    if (!AiNodeGetBool(node, aStr_process_obj_path_pipes))
         flags ^= CRYPTO_NAME_OBJPATHPIPES;
-    if (!AiNodeGetBool(node, AtString("process_mat_path_pipes")))
+    if (!AiNodeGetBool(node, aStr_process_mat_path_pipes))
         flags ^= CRYPTO_NAME_MATPATHPIPES;
-    if (!AiNodeGetBool(node, AtString("process_legacy")))
+    if (!AiNodeGetBool(node, aStr_process_legacy))
         flags ^= CRYPTO_NAME_LEGACY;
 
     CryptoNameFlag obj_flags = flags, mat_flags = flags;
-    if (!AiNodeGetBool(node, AtString("strip_obj_namespaces")))
+    if (!AiNodeGetBool(node, aStr_strip_obj_namespaces))
         obj_flags ^= CRYPTO_NAME_STRIP_NS;
-    if (!AiNodeGetBool(node, AtString("strip_mat_namespaces")))
+    if (!AiNodeGetBool(node, aStr_strip_mat_namespaces))
         mat_flags ^= CRYPTO_NAME_STRIP_NS;
 
     data->set_option_namespace_stripping(obj_flags, mat_flags);
 
     AtArray* uc_aov_array = AiArray(4, 1, AI_TYPE_STRING, //
-                                    AiNodeGetStr(node, AtString("user_crypto_aov_0")).c_str(),
-                                    AiNodeGetStr(node, AtString("user_crypto_aov_1")).c_str(),
-                                    AiNodeGetStr(node, AtString("user_crypto_aov_2")).c_str(),
-                                    AiNodeGetStr(node, AtString("user_crypto_aov_3")).c_str());
+                                    AiNodeGetStr(node, aStr_user_crypto_aov_0).c_str(),
+                                    AiNodeGetStr(node, aStr_user_crypto_aov_1).c_str(),
+                                    AiNodeGetStr(node, aStr_user_crypto_aov_2).c_str(),
+                                    AiNodeGetStr(node, aStr_user_crypto_aov_3).c_str());
     AtArray* uc_src_array = AiArray(4, 1, AI_TYPE_STRING, //
-                                    AiNodeGetStr(node, AtString("user_crypto_src_0")).c_str(),
-                                    AiNodeGetStr(node, AtString("user_crypto_src_1")).c_str(),
-                                    AiNodeGetStr(node, AtString("user_crypto_src_2")).c_str(),
-                                    AiNodeGetStr(node, AtString("user_crypto_src_3")).c_str());
+                                    AiNodeGetStr(node, aStr_user_crypto_src_0).c_str(),
+                                    AiNodeGetStr(node, aStr_user_crypto_src_1).c_str(),
+                                    AiNodeGetStr(node, aStr_user_crypto_src_2).c_str(),
+                                    AiNodeGetStr(node, aStr_user_crypto_src_3).c_str());
 
     data->setup_all(universe, 
-                    AiNodeGetStr(node, AtString("aov_crypto_asset")), 
-                    AiNodeGetStr(node, AtString("aov_crypto_object")),
-                    AiNodeGetStr(node, AtString("aov_crypto_material")), 
+                    AiNodeGetStr(node, aStr_aov_crypto_asset), 
+                    AiNodeGetStr(node, aStr_aov_crypto_object),
+                    AiNodeGetStr(node, aStr_aov_crypto_material), 
                     uc_aov_array, 
                     uc_src_array, 
-                    AiNodeGetBool(node, AtString("custom_output_driver")), 
-                    AiNodeGetBool(node, AtString("create_depth_outputs")));
+                    AiNodeGetBool(node, aStr_custom_output_driver), 
+                    AiNodeGetBool(node, aStr_create_depth_outputs));
 }
 
 shader_evaluate {

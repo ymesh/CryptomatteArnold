@@ -62,10 +62,10 @@ void node_update_content(AtNode* node) {
     std::lock_guard<AtMutex> guard(g_crypto_mutex);
 
     CryptomatteFilterData* data = (CryptomatteFilterData*)AiNodeGetLocalData(node);
-    data->width = AiNodeGetFlt(node, AtString("width"));
-    data->rank = AiNodeGetInt(node, AtString("rank"));
-    data->filter = AiNodeGetInt(node, AtString("filter"));
-    data->noop = AiNodeGetBool(node, AtString("noop"));
+    data->width = AiNodeGetFlt(node, aStr_width);
+    data->rank = AiNodeGetInt(node, aStr_rank);
+    data->filter = AiNodeGetInt(node, aStr_filter);
+    data->noop = AiNodeGetBool(node, aStr_noop);
 
     if (data->noop)
         return;
