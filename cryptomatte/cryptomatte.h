@@ -97,6 +97,7 @@ getting global
 #include <string>
 #include <unordered_set>
 #include <vector>
+#include <array>
 
 #define NOMINMAX // lets you keep using std::min on windows
 
@@ -528,10 +529,9 @@ inline int get_offset_user_data(const AtShaderGlobals* sg, const AtNode* node,
 inline void offset_name(const AtShaderGlobals* sg, const AtNode* node, const int offset,
                         char obj_name_out[MAX_STRING_LENGTH]) {
     if (offset) {
-        constexpr size_t offset_num_str_buf_size = 12;
-        char offset_num_str[offset_num_str_buf_size];
-        snprintf(offset_num_str, offset_num_str_buf_size, "_%d", offset);
-        strcat(obj_name_out, offset_num_str);
+        std::array<char,12> offset_num_str;
+        snprintf(offset_num_str.data(), offset_num_str.size(), "_%d", offset);
+        strcat(obj_name_out, offset_num_str.data());
     }
 }
 
@@ -606,9 +606,8 @@ inline void write_manifest_to_string(const ManifestMap& map, String& manf_string
 
         uint32_t float_bits;
         std::memcpy(&float_bits, &hash_value, 4);
-        constexpr size_t hex_chars_buf_size = 9;
-        char hex_chars[hex_chars_buf_size];
-        snprintf(hex_chars, hex_chars_buf_size, "%08x", float_bits);
+        std::array<char,9> hex_chars;
+        snprintf(hex_chars.data(), hex_chars.size(), "%08x", float_bits);
 
         pair.clear();
         pair.append("\"");
@@ -620,7 +619,7 @@ inline void write_manifest_to_string(const ManifestMap& map, String& manf_string
             pair += c;
         }
         pair.append("\":\"");
-        pair.append(hex_chars);
+        pair.append(hex_chars.data());
         pair.append("\"");
         if (i < map_entries - 1)
             pair.append(",");
@@ -1200,12 +1199,11 @@ private:
 
         // Create filters and outputs as needed
         for (int i = 0; i < option_aov_depth; i++) {
-            constexpr size_t rank_num_buf_size = 3;
-            char rank_num[rank_num_buf_size];
-            snprintf(rank_num, rank_num_buf_size, "%002d", i);
+            std::array<char, 3> rank_num;
+            snprintf(rank_num.data(), rank_num.size(), "%002d", i);
 
-            const String filter_rank_name = t_output.aov_name_tok + "_filter" + rank_num;
-            const String aov_rank_name = t_output.aov_name_tok + rank_num;
+            const String filter_rank_name = t_output.aov_name_tok + "_filter" + rank_num.data();
+            const String aov_rank_name = t_output.aov_name_tok + rank_num.data();
             if (create_depth_outputs) {
                 if (AiNodeLookUpByName(universe, AtString(filter_rank_name.c_str())) == nullptr)
                     AtNode* filter = create_filter(universe, orig_filter, filter_rank_name, i);
@@ -1215,7 +1213,7 @@ private:
 
                 // also append the rank to the eventual layer name
                 if (!new_t_output.layer_tok.empty())
-                    new_t_output.layer_tok += rank_num;
+                    new_t_output.layer_tok += rank_num.data();
 
                 new_t_output.aov_type_tok = "FLOAT";
                 new_t_output.filter_tok = filter_rank_name;
@@ -1592,10 +1590,9 @@ private:
         const float float_id = hash_name_rgb(cryptomatte_name.c_str()).r;
         uint32_t int_id;
         std::memcpy(&int_id, &float_id, 4);
-        constexpr size_t hex_chars_buf_size = 9;
-        char hex_chars[hex_chars_buf_size];
-        snprintf(hex_chars, hex_chars_buf_size, "%08x", int_id);
-        return String(hex_chars).substr(0, 7);
+        std::array<char, 9> hex_chars;
+        snprintf(hex_chars.data(), hex_chars.size(), "%08x", int_id);
+        return String(hex_chars.data()).substr(0, 7);
     }
 
     ///////////////////////////////////////////////
