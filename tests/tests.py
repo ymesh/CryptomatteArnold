@@ -36,6 +36,7 @@ class KickAndCompareTestCase(unittest.TestCase):
     arnold_v = 1
     arnold_t = 4
     arnold_nw = 20
+    simulate_ipr_refreshes=0
 
     @classmethod
     def setUpClass(self):
@@ -63,8 +64,10 @@ class KickAndCompareTestCase(unittest.TestCase):
         assert os.path.isdir(self.correct_result_dir), "No correct result dir found. %s" % (
             self.correct_result_dir)
 
-        self.render_in_kick()
-        # self.render_in_python(1)
+        if self.simulate_ipr_refreshes:
+            self.render_in_python(self.simulate_ipr_refreshes)
+        else:
+            self.render_in_kick()
 
     @classmethod
     def reset_results(self):

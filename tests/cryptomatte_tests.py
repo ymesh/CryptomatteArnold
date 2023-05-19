@@ -481,7 +481,9 @@ class Cryptomatte020(CryptomatteTestBase):
     """
     Has some custom cryptomattes. Some objects have values set, others do not.
     Some per-face user data as well.
-
+    
+    Simulates IPR refreshes. 
+    
     Settings:
         naming style: maya
         exr: single
@@ -491,6 +493,7 @@ class Cryptomatte020(CryptomatteTestBase):
     Something has strings per polygon.
     """
     ass = "cryptomatte/020_custom_cryptomattes.ass"
+    simulate_ipr_refreshes = 2
 
     def test_compression_and_manifests(self):
         self.assertAllManifestsValidAndMatch()
