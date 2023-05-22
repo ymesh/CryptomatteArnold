@@ -1,3 +1,9 @@
+### CryptomatteArnold 1.2.3 release notes: 
+
+* Fixed deprecation warnings in Arnold 7.x (Thanks @cpichard and @ThiagoIze)
+* Fixed Arnold-Python code for Arnold 7.x 
+* Added tests that exercise rendering multiple times in one Arnold sesion
+
 ### CryptomatteArnold 1.2.2 release notes: 
 
 * Fixed an issue where sidecar manifests did not work with Solaris (Thanks @cpichard)

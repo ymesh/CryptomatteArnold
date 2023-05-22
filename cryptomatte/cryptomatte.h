@@ -97,6 +97,7 @@ getting global
 #include <string>
 #include <unordered_set>
 #include <vector>
+#include <array>
 
 #define NOMINMAX // lets you keep using std::min on windows
 
@@ -142,8 +143,47 @@ extern const AtString CRYPTO_MATERIAL_OFFSET_UDATA;
 extern AtMutex g_crypto_mutex;
 
 // Some static AtStrings to cache
-const AtString aStr_shader("shader");
-const AtString aStr_list_aggregate("list_aggregate");
+extern const AtString aStr_aov_crypto_asset;
+extern const AtString aStr_aov_crypto_material;
+extern const AtString aStr_aov_crypto_object;
+extern const AtString aStr_compression;
+extern const AtString aStr_create_depth_outputs;
+extern const AtString aStr_cryptomatte_depth;
+extern const AtString aStr_cryptomatte_filter;
+extern const AtString aStr_custom_attributes;
+extern const AtString aStr_custom_output_driver;
+extern const AtString aStr_driver_exr;
+extern const AtString aStr_dwaa;
+extern const AtString aStr_dwab;
+extern const AtString aStr_filename;
+extern const AtString aStr_filter;
+extern const AtString aStr_half_precision;
+extern const AtString aStr_list_aggregate;
+extern const AtString aStr_noop;
+extern const AtString aStr_outputs;
+extern const AtString aStr_preview_in_exr;
+extern const AtString aStr_process_legacy;
+extern const AtString aStr_process_mat_path_pipes;
+extern const AtString aStr_process_maya;
+extern const AtString aStr_process_obj_path_pipes;
+extern const AtString aStr_process_paths;
+extern const AtString aStr_rank;
+extern const AtString aStr_rle;
+extern const AtString aStr_shader;
+extern const AtString aStr_sidecar_manifests;
+extern const AtString aStr_strip_mat_namespaces;
+extern const AtString aStr_strip_obj_namespaces;
+extern const AtString aStr_user_crypto_aov_0;
+extern const AtString aStr_user_crypto_aov_1;
+extern const AtString aStr_user_crypto_aov_2;
+extern const AtString aStr_user_crypto_aov_3;
+extern const AtString aStr_user_crypto_src_0;
+extern const AtString aStr_user_crypto_src_1;
+extern const AtString aStr_user_crypto_src_2;
+extern const AtString aStr_user_crypto_src_3;
+extern const AtString aStr_width;
+extern const AtString aStr_zip;
+
 
 // Name processing flags
 using CryptoNameFlag = uint8_t;
@@ -489,9 +529,9 @@ inline int get_offset_user_data(const AtShaderGlobals* sg, const AtNode* node,
 inline void offset_name(const AtShaderGlobals* sg, const AtNode* node, const int offset,
                         char obj_name_out[MAX_STRING_LENGTH]) {
     if (offset) {
-        char offset_num_str[12];
-        sprintf(offset_num_str, "_%d", offset);
-        strcat(obj_name_out, offset_num_str);
+        std::array<char,12> offset_num_str;
+        snprintf(offset_num_str.data(), offset_num_str.size(), "_%d", offset);
+        strcat(obj_name_out, offset_num_str.data());
     }
 }
 
@@ -566,8 +606,8 @@ inline void write_manifest_to_string(const ManifestMap& map, String& manf_string
 
         uint32_t float_bits;
         std::memcpy(&float_bits, &hash_value, 4);
-        char hex_chars[9];
-        sprintf(hex_chars, "%08x", float_bits);
+        std::array<char,9> hex_chars;
+        snprintf(hex_chars.data(), hex_chars.size(), "%08x", float_bits);
 
         pair.clear();
         pair.append("\"");
@@ -579,7 +619,7 @@ inline void write_manifest_to_string(const ManifestMap& map, String& manf_string
             pair += c;
         }
         pair.append("\":\"");
-        pair.append(hex_chars);
+        pair.append(hex_chars.data());
         pair.append("\"");
         if (i < map_entries - 1)
             pair.append(",");
@@ -987,7 +1027,7 @@ private:
             if (layer_tok == String("HALF"))
                 layer_tok = String("");
 
-            driver = AiNodeLookUpByName(universe, driver_tok.c_str());
+            driver = AiNodeLookUpByName(universe, AtString(driver_tok.c_str()));
         }
 
         String rebuild_output() const {
@@ -1019,7 +1059,7 @@ private:
             if (driver && driver_tok == String(AiNodeGetName(driver)))
                 return driver;
             else if (!driver_tok.empty())
-                return AiNodeLookUpByName(universe, driver_tok.c_str());
+                return AiNodeLookUpByName(universe, AtString(driver_tok.c_str()));
             else
                 return nullptr;
         }
@@ -1032,7 +1072,7 @@ private:
     void setup_outputs(AtUniverse *universe) {
         std::lock_guard<AtMutex> guard(g_crypto_mutex);
 
-        const AtArray* outputs = AiNodeGetArray(AiUniverseGetOptions(universe), "outputs");
+        const AtArray* outputs = AiNodeGetArray(AiUniverseGetOptions(universe), aStr_outputs);
         const uint32_t prev_output_num = AiArrayGetNumElements(outputs);
         AtNode* noop_filter = option_exr_preview_channels ? nullptr : get_or_create_noop_filter(universe);
 
@@ -1072,9 +1112,9 @@ private:
                 crypto_aovs_count++;
                 setup_new_outputs(universe, t_output, crypto_aovs, outputs_new);
 
-                if (AiNodeEntryLookUpParameter(AiNodeGetNodeEntry(driver), "half_precision")) {
-                    if (AiNodeGetBool(driver, "half_precision")) {
-                        AiNodeSetBool(driver, "half_precision", false);
+                if (AiNodeEntryLookUpParameter(AiNodeGetNodeEntry(driver), aStr_half_precision)) {
+                    if (AiNodeGetBool(driver, aStr_half_precision)) {
+                        AiNodeSetBool(driver, aStr_half_precision, false);
                         modified_drivers.insert(driver);
                     }
                 }
@@ -1113,7 +1153,7 @@ private:
             for (auto& t_output : outputs_new)
                 AiArraySetStr(final_outputs, i++, t_output.rebuild_output().c_str());
 
-            AiNodeSetArray(AiUniverseGetOptions(universe), "outputs", final_outputs);
+            AiNodeSetArray(AiUniverseGetOptions(universe), aStr_outputs, final_outputs);
         }
 
         build_standard_metadata(universe, driver_asset, driver_object, driver_material);
@@ -1121,7 +1161,7 @@ private:
     }
 
     std::unordered_set<String> get_current_outputs_set(AtUniverse *universe) const {
-        AtArray* outputs = AiNodeGetArray(AiUniverseGetOptions(universe), "outputs");
+        AtArray* outputs = AiNodeGetArray(AiUniverseGetOptions(universe), aStr_outputs);
         std::unordered_set<String> output_set;
         for (uint32_t i = 0; i < AiArrayGetNumElements(outputs); i++)
             output_set.insert(String(AiArrayGetStr(outputs, i)));
@@ -1131,19 +1171,19 @@ private:
     void setup_new_outputs(AtUniverse *universe, TokenizedOutput& t_output, 
                           AtArray* crypto_aovs, std::vector<TokenizedOutput>& new_outputs) const {
         // Populates crypto_aovs and new_outputs
-        AtNode* orig_filter = AiNodeLookUpByName(universe, t_output.filter_tok.c_str());
+        AtNode* orig_filter = AiNodeLookUpByName(universe, AtString(t_output.filter_tok.c_str()));
 
         // Outlaw RLE, dwaa, dwab
         AtNode* driver = t_output.get_driver();
         const AtNodeEntry *driverEntry = AiNodeGetNodeEntry(driver);
-        const AtParamEntry* compressionParamEntry = AiNodeEntryLookUpParameter(driverEntry, "compression");
+        const AtParamEntry* compressionParamEntry = AiNodeEntryLookUpParameter(driverEntry, aStr_compression);
 
         if (compressionParamEntry) {
             const AtEnum compressions = AiParamGetEnum(compressionParamEntry);
-            const int compression = AiNodeGetInt(driver, "compression");
-            const bool cmp_rle = compression == AiEnumGetValue(compressions, "rle"),
-                       cmp_dwa = compression == AiEnumGetValue(compressions, "dwaa") ||
-                                 compression == AiEnumGetValue(compressions, "dwab");
+            const int compression = AiNodeGetInt(driver, aStr_compression);
+            const bool cmp_rle = compression == AiEnumGetValue(compressions, aStr_rle),
+                       cmp_dwa = compression == AiEnumGetValue(compressions, aStr_dwaa) ||
+                                 compression == AiEnumGetValue(compressions, aStr_dwab);
             if (cmp_rle || cmp_dwa) {
                 if (cmp_rle)
                     AiMsgWarning("Cryptomatte cannot be set to RLE compression- it "
@@ -1151,7 +1191,7 @@ private:
                 if (cmp_dwa)
                     AiMsgWarning("Cryptomatte cannot be set to dwa compression- the "
                                  "compression breaks Cryptomattes. Switching to Zip.");
-                AiNodeSetStr(driver, "compression", "zip");
+                AiNodeSetStr(driver, aStr_compression, aStr_zip);
             }
         }
 
@@ -1159,13 +1199,13 @@ private:
 
         // Create filters and outputs as needed
         for (int i = 0; i < option_aov_depth; i++) {
-            char rank_num[3];
-            sprintf(rank_num, "%002d", i);
+            std::array<char, 3> rank_num;
+            snprintf(rank_num.data(), rank_num.size(), "%002d", i);
 
-            const String filter_rank_name = t_output.aov_name_tok + "_filter" + rank_num;
-            const String aov_rank_name = t_output.aov_name_tok + rank_num;
+            const String filter_rank_name = t_output.aov_name_tok + "_filter" + rank_num.data();
+            const String aov_rank_name = t_output.aov_name_tok + rank_num.data();
             if (create_depth_outputs) {
-                if (AiNodeLookUpByName(universe, filter_rank_name.c_str()) == nullptr)
+                if (AiNodeLookUpByName(universe, AtString(filter_rank_name.c_str())) == nullptr)
                     AtNode* filter = create_filter(universe, orig_filter, filter_rank_name, i);
 
                 TokenizedOutput new_t_output = t_output;
@@ -1173,7 +1213,7 @@ private:
 
                 // also append the rank to the eventual layer name
                 if (!new_t_output.layer_tok.empty())
-                    new_t_output.layer_tok += rank_num;
+                    new_t_output.layer_tok += rank_num.data();
 
                 new_t_output.aov_type_tok = "FLOAT";
                 new_t_output.filter_tok = filter_rank_name;
@@ -1194,16 +1234,16 @@ private:
 
     AtNode* create_filter(AtUniverse *universe, const AtNode* orig_filter, const String filter_name, int aovindex) const {
         const AtNodeEntry* filter_nentry = AiNodeGetNodeEntry(orig_filter);
-        const auto width = AiNodeEntryLookUpParameter(filter_nentry, "width")
-                               ? AiNodeGetFlt(orig_filter, "width")
+        const auto width = AiNodeEntryLookUpParameter(filter_nentry, aStr_width)
+                               ? AiNodeGetFlt(orig_filter, aStr_width)
                                : 2.0f;
         const String filter_type = AiNodeEntryGetName(filter_nentry);
         const String filter_param = filter_type.substr(0, filter_type.find("_filter"));
 
-        AtNode* filter = AiNode(universe, "cryptomatte_filter", filter_name.c_str(), nullptr);
-        AiNodeSetStr(filter, "filter", filter_param.c_str());
-        AiNodeSetInt(filter, "rank", aovindex * 2);
-        AiNodeSetFlt(filter, "width", width);
+        AtNode* filter = AiNode(universe, aStr_cryptomatte_filter, AtString(filter_name.c_str()), nullptr);
+        AiNodeSetStr(filter, aStr_filter, AtString(filter_param.c_str()));
+        AiNodeSetInt(filter, aStr_rank, aovindex * 2);
+        AiNodeSetFlt(filter, aStr_width, width);
         return filter;
     }
 
@@ -1211,8 +1251,8 @@ private:
         const static AtString noop_filter_name("cryptomatte_noop_filter");
         AtNode* filter = AiNodeLookUpByName(universe, noop_filter_name);
         if (!filter) {
-            filter = AiNode(universe, "cryptomatte_filter", noop_filter_name, nullptr);
-            AiNodeSetBool(filter, "noop", true);
+            filter = AiNode(universe, aStr_cryptomatte_filter, noop_filter_name, nullptr);
+            AiNodeSetBool(filter, aStr_noop, true);
         }
         return filter;
     }
@@ -1229,7 +1269,7 @@ private:
         AtString manifest_driver_name("cryptomatte_manifest_driver");
         AtNode* manifest_driver = AiNodeLookUpByName(universe, manifest_driver_name);
         if (!manifest_driver)
-            manifest_driver = AiNode(universe, "cryptomatte_manifest_driver", manifest_driver_name, nullptr);
+            manifest_driver = AiNode(universe, manifest_driver_name, manifest_driver_name, nullptr);
         AiNodeSetLocalData(manifest_driver, this);
         return manifest_driver;
     }
@@ -1244,8 +1284,8 @@ private:
         metadata_path_out = "";
         if (check_driver(driver) && option_sidecar_manifests) {
 
-            if (AiNodeEntryLookUpParameter(AiNodeGetNodeEntry(driver), "filename")) {
-                String filepath = String(AiNodeGetStr(driver, "filename").c_str());
+            if (AiNodeEntryLookUpParameter(AiNodeGetNodeEntry(driver), aStr_filename)) {
+                String filepath = String(AiNodeGetStr(driver, aStr_filename).c_str());
                 const size_t exr_found = filepath.find(".exr");
                 if (exr_found != String::npos)
                     filepath = filepath.substr(0, exr_found);
@@ -1312,7 +1352,7 @@ private:
             if (do_md_material) {
                 // Process all shaders from the objects into the manifest.
                 // This includes cluster materials.
-                AtArray* shaders = AiNodeGetArray(node, "shader");
+                AtArray* shaders = AiNodeGetArray(node, aStr_shader);
                 if (!shaders)
                     continue;
                 for (uint32_t i = 0; i < AiArrayGetNumElements(shaders); i++) {
@@ -1478,11 +1518,11 @@ private:
         if (!check_driver(driver))
             return;
 
-        if (!AiNodeEntryLookUpParameter(AiNodeGetNodeEntry(driver), "custom_attributes") &&
-            !AiNodeLookUpUserParameter(driver, "custom_attributes")) {
-            AiNodeDeclare(driver, "custom_attributes", "constant ARRAY STRING");
+        if (!AiNodeEntryLookUpParameter(AiNodeGetNodeEntry(driver), aStr_custom_attributes) &&
+            !AiNodeLookUpUserParameter(driver, aStr_custom_attributes)) {
+            AiNodeDeclare(driver, aStr_custom_attributes, "constant ARRAY STRING");
         }
-        AtArray* orig_md = AiNodeGetArray(driver, "custom_attributes");
+        AtArray* orig_md = AiNodeGetArray(driver, aStr_custom_attributes);
         const uint32_t orig_num_entries = orig_md ? AiArrayGetNumElements(orig_md) : 0;
 
         const String metadata_id = compute_metadata_ID(cryptomatte_name);
@@ -1516,11 +1556,11 @@ private:
         AiArraySetStr(combined_md, orig_num_entries + 2, metadata_conv.c_str());
         AiArraySetStr(combined_md, orig_num_entries + 3, metadata_name.c_str());
 
-        AiNodeSetArray(driver, "custom_attributes", combined_md);
+        AiNodeSetArray(driver, aStr_custom_attributes, combined_md);
     }
 
     bool check_driver(AtNode* driver) const {
-        return driver && (custom_output_driver || AiNodeIs(driver, AtString("driver_exr")));
+        return driver && (custom_output_driver || AiNodeIs(driver, aStr_driver_exr));
     }
 
     bool metadata_needed_on_drivers(const std::vector<AtNode*>& drivers, const AtString aov_name) {
@@ -1535,24 +1575,24 @@ private:
 
     bool metadata_needed(AtNode* driver, const AtString aov_name) const {
         String flag = String(CRYPTOMATTE_METADATA_SET_FLAG) + aov_name.c_str();
-        return check_driver(driver) && !AiNodeLookUpUserParameter(driver, flag.c_str());
+        return check_driver(driver) && !AiNodeLookUpUserParameter(driver, AtString(flag.c_str()));
     }
 
     void metadata_set_unneeded(AtNode* driver, const AtString aov_name) const {
         if (!driver)
             return;
         String flag = String(CRYPTOMATTE_METADATA_SET_FLAG) + aov_name.c_str();
-        if (!AiNodeLookUpUserParameter(driver, flag.c_str()))
-            AiNodeDeclare(driver, flag.c_str(), "constant BOOL");
+        if (!AiNodeLookUpUserParameter(driver, AtString(flag.c_str())))
+            AiNodeDeclare(driver, AtString(flag.c_str()), "constant BOOL");
     }
 
     String compute_metadata_ID(AtString cryptomatte_name) const {
         const float float_id = hash_name_rgb(cryptomatte_name.c_str()).r;
         uint32_t int_id;
         std::memcpy(&int_id, &float_id, 4);
-        char hex_chars[9];
-        sprintf(hex_chars, "%08x", int_id);
-        return String(hex_chars).substr(0, 7);
+        std::array<char, 9> hex_chars;
+        snprintf(hex_chars.data(), hex_chars.size(), "%08x", int_id);
+        return String(hex_chars.data()).substr(0, 7);
     }
 
     ///////////////////////////////////////////////

@@ -18,7 +18,7 @@ In this test suite, an assertion failure results in an AiMsgError.
 
 */
 
-#define CRYPTO_TEST_FLAG "run_unit_tests"
+#define CRYPTO_TEST_FLAG AtString("run_unit_tests")
 
 ///////////////////////////////////////////////
 //
