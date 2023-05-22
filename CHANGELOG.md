@@ -2,7 +2,7 @@
 
 * Fixed deprecation warnings in Arnold 7.x (Thanks @cpichard and @ThiagoIze)
 * Fixed Arnold-Python code for Arnold 7.x 
-* Added tests that exercise rendering multiple times in one Arnold sesion
+* Added tests that exercise rendering multiple times in one Arnold session
 
 ### CryptomatteArnold 1.2.2 release notes: 
 
