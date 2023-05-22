@@ -36,7 +36,7 @@ class KickAndCompareTestCase(unittest.TestCase):
     arnold_v = 1
     arnold_t = 4
     arnold_nw = 20
-    simulate_ipr_refreshes=0
+    num_render_refreshes = 0
 
     @classmethod
     def setUpClass(self):
@@ -64,8 +64,8 @@ class KickAndCompareTestCase(unittest.TestCase):
         assert os.path.isdir(self.correct_result_dir), "No correct result dir found. %s" % (
             self.correct_result_dir)
 
-        if self.simulate_ipr_refreshes:
-            self.render_in_python(self.simulate_ipr_refreshes)
+        if self.num_render_refreshes:
+            self.render_in_python(self.num_render_refreshes)
         else:
             self.render_in_kick()
 
@@ -95,7 +95,6 @@ class KickAndCompareTestCase(unittest.TestCase):
         cmd = 'kick -v {v} -t {t} -nw {nw} -dp -dw -sl -nostdin -logfile {log} -i {ass}'.format(
             v=self.arnold_v, t=self.arnold_t, nw=self.arnold_nw, log=self.result_log, ass=self.ass_file_name)
         cwd = self.test_dir.replace("\\", "/")
-        print cmd, cwd
         env = os.environ.copy()
         env["ARNOLD_PLUGIN_PATH"] = "%s;%s" % (self.build_dir, env.get("ARNOLD_PLUGIN_PATH", ""))
         proc = subprocess.Popen(cmd, cwd=cwd, env=env, shell=True, stderr=subprocess.PIPE)
@@ -115,12 +114,12 @@ class KickAndCompareTestCase(unittest.TestCase):
             ai.AiBegin()
             universe = ai.AiUniverse()
 
-            msg_flags = ai.AI_LOG_WARNINGS|ai.AI_LOG_ERRORS|ai.AI_LOG_PROGRESS
+            msg_flags = ai.AI_LOG_INFO|ai.AI_LOG_WARNINGS|ai.AI_LOG_ERRORS
             ai.AiMsgSetLogFileName(self.result_log)
             ai.AiMsgSetMaxWarnings(self.arnold_nw)
             ai.AiMsgSetLogFileFlags(universe, msg_flags)
             ai.AiMsgSetConsoleFlags(universe, msg_flags)
-            ai.AiMsgWarning("[Cryptomatte test suite] - Rendering with Python. ")
+            ai.AiMsgInfo("[Cryptomatte test suite] - Rendering with Python. ")
 
             params = ai.AiParamValueMap();
             ai.AiParamValueMapSetInt(params, "mask", ai.AI_NODE_ALL);

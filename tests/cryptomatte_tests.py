@@ -493,7 +493,7 @@ class Cryptomatte020(CryptomatteTestBase):
     Something has strings per polygon.
     """
     ass = "cryptomatte/020_custom_cryptomattes.ass"
-    simulate_ipr_refreshes = 2
+    num_render_refreshes = 2
 
     def test_compression_and_manifests(self):
         self.assertAllManifestsValidAndMatch()
@@ -531,10 +531,10 @@ class CryptomatteSetup(unittest.TestCase):
         ai.AiBegin()
         self.universe = ai.AiUniverse()
 
-        msg_flags = ai.AI_LOG_WARNINGS|ai.AI_LOG_ERRORS|ai.AI_LOG_PROGRESS
+        msg_flags = ai.AI_LOG_INFO|ai.AI_LOG_WARNINGS|ai.AI_LOG_ERRORS
         ai.AiMsgSetLogFileFlags(self.universe, msg_flags)
         ai.AiMsgSetConsoleFlags(self.universe, msg_flags)
-        ai.AiMsgWarning("[Cryptomatte test suite] - Rendering with Python. ")
+        ai.AiMsgInfo("[Cryptomatte test suite] - Rendering with Python. ")
 
         self.session = ai.AiRenderSession(self.universe, ai.AI_SESSION_BATCH)
         options = ai.AiUniverseGetOptions(self.universe)
