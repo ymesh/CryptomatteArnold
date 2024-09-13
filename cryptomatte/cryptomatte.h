@@ -83,6 +83,7 @@ getting global
 
 
 */
+#pragma once
 
 #include "MurmurHash3.h"
 #include <ai.h>
@@ -813,6 +814,10 @@ struct CryptomatteData {
     // Nested vector of paths for each user cryptomatte.
     std::vector<StringVector> manifs_user_paths;
 
+    // XXX lentil addition
+    bool started = false;
+    bool is_setup_completed = false;
+
 public:
     CryptomatteData() {
         set_option_channels(CRYPTO_DEPTH_DEFAULT, CRYPTO_PREVIEWINEXR_DEFAULT);
@@ -827,6 +832,9 @@ public:
                    AtArray* uc_src_array,
                    bool custom_output_driver_,
                    bool create_depth_outputs_) {
+        // XXX lentil addition
+        started = true;
+
         aov_cryptoasset = aov_cryptoasset_;
         aov_cryptoobject = aov_cryptoobject_;
         aov_cryptomaterial = aov_cryptomaterial_;
@@ -838,6 +846,9 @@ public:
         user_cryptomattes = UserCryptomattes(uc_aov_array, uc_src_array);
 
         setup_outputs(universe);
+
+        // XXX lentil addition
+        is_setup_completed = true;
     }
 
     void set_option_channels(int depth, bool exr_preview_channels) {

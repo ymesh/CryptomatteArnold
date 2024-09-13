@@ -99,6 +99,6 @@ elif platform.system() == "Linux":
     # Linux
     createBinaryDistribution(name_linux, droot)
 else:
-    print 'Warning: unknown system "%s", not creating binary package' % platform.system()
+    print('Warning: unknown system "%s", not creating binary package' % platform.system())
 
     

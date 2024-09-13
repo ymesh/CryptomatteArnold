@@ -275,25 +275,27 @@ def run_tests(test_cases, test_filter=""):
         suite = filtered_suite
 
     suite.run(result)
-    print "---------"
+    print("---------")
     for test_instance, traceback in result.failures:
-        print "Failed: %s.%s" % (type(test_instance).__name__, find_test_method(traceback))
-        print
-        print traceback
-        print "---------"
+        print("Failed: %s.%s" % (type(test_instance).__name__, find_test_method(traceback)))
+        print()
+        print(traceback)
+        print("---------")
     for test_instance, traceback in result.errors:
-        print "Error: %s.%s" % (type(test_instance).__name__, find_test_method(traceback))
-        print
-        print traceback
-        print "---------"
+        print("Error: %s.%s" % (type(test_instance).__name__, find_test_method(traceback)))
+        print()
+        print(traceback)
+        print("---------")
 
     if result.failures or result.errors:
-        print "TESTING FAILED: %s failed, %s errors. (%s test cases.)" % (len(result.failures),
+        print("TESTING FAILED: %s failed, %s errors. (%s test cases.)" % (len(result.failures),
                                                                           len(result.errors),
                                                                           suite.countTestCases())
+        )
         return result
     else:
-        print "Testing passed: %s failed, %s errors. (%s test cases.)" % (len(result.failures),
+        print("Testing passed: %s failed, %s errors. (%s test cases.)" % (len(result.failures),
                                                                           len(result.errors),
                                                                           suite.countTestCases())
+        )
         return None

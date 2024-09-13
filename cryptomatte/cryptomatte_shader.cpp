@@ -4,6 +4,25 @@
 #include <cstring>
 #include <string>
 
+// XXX lentil
+// mechanism to setup the lentil AOVs AFTER cryptomatte has done it's thing, in the scenario that lentil
+// is first in the node_update queue. 
+#include "../pota/src/lentil.h"
+void setup_outputs_lentil(AtUniverse *universe) {
+    std::lock_guard<AtMutex> guard(g_crypto_mutex);
+    AtNode *camera_node = AiUniverseGetCamera(universe);
+    if (AiNodeEntryGetNameAtString(AiNodeGetNodeEntry(camera_node)) == AtString("lentil_camera")) {
+        Camera* camera_data = reinterpret_cast<Camera*>(AiNodeGetLocalData(camera_node));
+        
+        if (camera_data->crypto_in_same_queue) { // lentil node has been executed already and has been waiting 5sec in a deadlock
+            AiMsgWarning("Lentil setup was done inside of cryptomatte shader to avoid deadlock.");
+            camera_data->setup_lentil_aovs(universe);
+            camera_data->setup_crypto_aovs(universe);
+            camera_data->setup_filter(universe);
+        }
+    }
+}
+
 AI_SHADER_NODE_EXPORT_METHODS(cryptomatteMtd)
 
 enum cryptomatteParams {
@@ -120,6 +139,8 @@ node_update {
                     uc_src_array, 
                     AiNodeGetBool(node, aStr_custom_output_driver), 
                     AiNodeGetBool(node, aStr_create_depth_outputs));
+    // XXX lentil
+    setup_outputs_lentil(universe);
 }
 
 shader_evaluate {
