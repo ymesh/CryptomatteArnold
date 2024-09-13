@@ -1,3 +1,9 @@
+## About this branch: lentil_patch
+This branch added small code modifications for working with [ymesh](https://github.com/ymesh) fork of [Lentil](https://github.com/ymesh/lentil) Arnold plugin.
+
+Original Lentil repository: https://github.com/zpelgrims/lentil
+
+
 ![Cryptomatte Logo](/docs/header.png)
 
 # Cryptomatte for Arnold
